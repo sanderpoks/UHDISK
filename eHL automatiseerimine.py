@@ -85,7 +85,7 @@ class StartPage(tk.Frame):
 
         URL = "https://redcap.ut.ee/api/"
         #Pane API siia:
-        API_KEY = "E6AF2B323ED6FA8A2FFC70F1EA471D54"
+        API_KEY = ""
 
         project = Project(URL, API_KEY)
 
