@@ -58,6 +58,7 @@ class App(tk.Tk):
         tk.Tk.__init__(self)
         self._frame=None
         self.switch_frame(StartPage)
+
     def switch_frame(self, frame_class):
         new_frame = frame_class(self)
         if self._frame is not None:
