@@ -86,8 +86,12 @@ class StartPage(tk.Frame):
         URL = "https://redcap.ut.ee/api/"
         #Pane API siia:
         API_KEY = read_api_key()
-
-        project = Project(URL, API_KEY)
+        
+        try:
+            project = Project(URL, API_KEY)
+        except RedcapError:
+            print("Redcap error: Kontrolli et API key ei oleks vigane")
+            return #See rida peaks tegelikult kogu appi kinni panema, aga ei mõelnud välja, kuidas seda teha. app.quit() ei töötanud.
 
         fields_of_interest = ["id_code", "record_id", "ref_num","taustainfo_complete",'kiirabi_complete', "emo_complete", 'diagnoosid_complete']
         subset = project.export_records(fields=fields_of_interest)
