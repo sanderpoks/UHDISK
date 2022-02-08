@@ -1,0 +1,6 @@
+# Python cache folder
+__pycache__/
+
+# API key fail
+redcap_api_key
+
