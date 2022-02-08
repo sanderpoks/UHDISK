@@ -85,7 +85,7 @@ class StartPage(tk.Frame):
 
         URL = "https://redcap.ut.ee/api/"
         #Pane API siia:
-        API_KEY = ""
+        API_KEY = read_api_key()
 
         project = Project(URL, API_KEY)
 
@@ -99,6 +99,14 @@ class StartPage(tk.Frame):
                 uuritavad.record_ids += [element["record_id"]]
 
         return
+
+def read_api_key():
+    '''Laeb töökaustas olevast failist redcap_api_key RedCapiga ühendumiseks vajaliku võtme'''
+    try:
+        fail = open("redcap_api_key", "r")
+        return fail.read().strip()
+    except IOError:
+        print("Programmi kasutamiseks on vajalik RedCapi API key, mis peab asuma failis redcap_api_key")
 
 class DefaultPage(tk.Frame):
     def __init__(self, master):
