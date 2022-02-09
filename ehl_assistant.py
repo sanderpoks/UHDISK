@@ -54,7 +54,54 @@ class ApiRequestWindow:
         file.close()
         self.master.destroy()
 
+class MainWindow:
+
+    def __init__(self, master):
+        self.master = master
+        frame = tk.Frame(master)
+        frame.pack()
+        
+        tk.Label(text="Isikukood: " + str(uuritavad.isikukoodid[uuritavad.sisestatav_juht])).pack(expand=True)
+        tk.Label(text="Haigusjuhu number: " + str(uuritavad.hj_numbrid[uuritavad.sisestatav_juht])).pack(expand=True)
+        tk.Label(text="Juhu number: " + str(uuritavad.record_ids[uuritavad.sisestatav_juht])).pack(expand=True)
+
+def main_window():
+    root = tk.Tk()
+    root.title(APP_TITLE)
+    window = MainWindow(root)
+    root.mainloop()
+
+class Uuritavad:
+    
+    def __init__(self):
+        self.hj_numbrid=[]
+        self.isikukoodid=[]
+        self.record_ids=[]
+        self.sisestatav_juht=0
+        
+    def uus_lugu(self):
+        self.sisestatav_juht+=1
+        
+    def eelmine_lugu(self):
+        self.sisestatav_juht-=1
+
+def redcap_download_list():
+    uuritavad = Uuritavad()
+    fields_of_interest = ["id_code", "record_id", "ref_num","taustainfo_complete",'kiirabi_complete', "emo_complete", 'diagnoosid_complete']
+    subset = project.export_records(fields=fields_of_interest)
+    for element in subset:
+        if element["taustainfo_complete"] in ["", "0"] or element["kiirabi_complete"] in ["", "0"] or  element["emo_complete"] in ["", "0"] or element["diagnoosid_complete"] in ["", "0"]:
+            uuritavad.hj_numbrid += [element["ref_num"]]
+            uuritavad.isikukoodid += [element["id_code"]]
+            uuritavad.record_ids += [element["record_id"]]
+    return uuritavad
+
+# Main program flow
 project = redcap_connect()  # Kui API key on juba faili salvestatud ja töötab, siis seostab RedCapi projektiga.
 while project is None:
     redcap_create_api_key()  # Kui aga API keyga on mingi probleem, siis laseb kasutajal selle sisestada
     project = redcap_connect()  # Ja seejärel seostab RedCapi projektiga
+uuritavad = redcap_download_list()
+main_window()
+
+    
