@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 from redcap import Project, RedcapError
 import tkinter as tk
+import ehlNavigeerimine
 
 APP_TITLE = "ehl_helper"
 REDCAP_KEY_FILENAME = "redcap_api_key"
@@ -56,52 +57,156 @@ class ApiRequestWindow:
 
 class MainWindow:
 
-    def __init__(self, master):
+    def __init__(self, master, record_manager):
         self.master = master
-        frame = tk.Frame(master)
-        frame.pack()
-        
-        tk.Label(text="Isikukood: " + str(uuritavad.isikukoodid[uuritavad.sisestatav_juht])).pack(expand=True)
-        tk.Label(text="Haigusjuhu number: " + str(uuritavad.hj_numbrid[uuritavad.sisestatav_juht])).pack(expand=True)
-        tk.Label(text="Juhu number: " + str(uuritavad.record_ids[uuritavad.sisestatav_juht])).pack(expand=True)
+        self.record_manager = record_manager
+        self.active_record = self.record_manager.current()
+        ehl.haiguslugude_otsimine(self.active_record.isikukood, self.active_record.hj_number)
 
-def main_window():
+        BUTTONWIDTH = 5
+        
+        topframe = tk.Frame(master)
+        botframe = tk.Frame(master)
+
+        topframe.grid(row=0)
+        botframe.grid(row=1)
+
+        self.isikukood = tk.StringVar()
+        self.hj_number = tk.StringVar()
+        self.record_id = tk.StringVar()
+        self.refresh_labels()
+        
+        tk.Label(topframe, textvariable=self.isikukood).pack(expand=True)
+        tk.Label(topframe, textvariable=self.hj_number).pack(expand=True)
+        tk.Label(topframe, textvariable=self.record_id).pack(expand=True)
+
+        kiirabinupp = tk.Button(botframe, text = "Kiirabi", command = ehl.ava_kiirabi_kaart, width = BUTTONWIDTH)
+        paevikunupp = tk.Button(botframe, text = "Päevik", command = ehl.ava_paeviku_algus, width = BUTTONWIDTH)
+        triaazinupp = tk.Button(botframe, text = "Triaaž", command = ehl.ava_emo_triaaz, width = BUTTONWIDTH)
+        epikriisinupp = tk.Button(botframe, text = "Epikriis", command = lambda: ehl.ava_menyy_alajaotis("Epikriis"), width = BUTTONWIDTH)
+
+        jargminenupp = tk.Button(botframe, text = "Järgmine", command = self.next, width = BUTTONWIDTH)
+        eelminenupp = tk.Button(botframe, text = "Eelmine", command = self.previous, width = BUTTONWIDTH)
+
+        kiirabinupp.grid(row=0,column=0)
+        paevikunupp.grid(row=0, column=1)
+        triaazinupp.grid(row=0, column=2)
+        epikriisinupp.grid(row=1,column=1)
+        jargminenupp.grid(row=1,column=2)
+        eelminenupp.grid(row=1,column=0)
+
+    def refresh_labels(self):
+        self.isikukood.set("Isikukood: " + self.active_record.isikukood)
+        self.hj_number.set("Haigusjuhu number: " + self.active_record.hj_number)
+        self.record_id.set("Juhu number: " + self.active_record.record_id)
+
+    def next(self):
+        self.active_record = self.record_manager.next()
+        ehl.haiguslugude_otsimine(self.active_record.isikukood, self.active_record.hj_number)
+        self.refresh_labels()
+
+    def previous(self):
+        self.active_record = self.record_manager.previous()
+        ehl.haiguslugude_otsimine(self.active_record.isikukood, self.active_record.hj_number)
+        self.refresh_labels()
+
+
+def main_window(record_manager):
     root = tk.Tk()
     root.title(APP_TITLE)
-    window = MainWindow(root)
+    window = MainWindow(root, record_manager)
     root.mainloop()
 
-class Uuritavad:
-    
-    def __init__(self):
-        self.hj_numbrid=[]
-        self.isikukoodid=[]
-        self.record_ids=[]
-        self.sisestatav_juht=0
-        
-    def uus_lugu(self):
-        self.sisestatav_juht+=1
-        
-    def eelmine_lugu(self):
-        self.sisestatav_juht-=1
+def login_window():
+    root = tk.Tk()
+    root.title(APP_TITLE)
+    window = LoginWindow(root)
+    root.mainloop()
 
-def redcap_download_list():
-    uuritavad = Uuritavad()
-    fields_of_interest = ["id_code", "record_id", "ref_num","taustainfo_complete",'kiirabi_complete', "emo_complete", 'diagnoosid_complete']
-    subset = project.export_records(fields=fields_of_interest)
-    for element in subset:
+class LoginWindow:
+
+    def __init__(self, master):
+        self.master = master
+        
+        tk.Button(text="Olen eHLi sisse loginud", command = self.quit).pack(padx = 20, pady = 20)
+
+    def quit(self):
+        self.master.destroy()
+
+class Record:
+    def __init__(self, project, record_id):
+        self.record_id = record_id
+        record = redcap_retrieve_details(project, record_id)[0]
+        print(record)
+        self.isikukood = record["id_code"]
+        self.hj_number = record["ref_num"]
+
+    def print(self):
+        print(f"Record ID:\t{self.record_id}\nIsikukood:\t{self.isikukood}\nHJ number:\t{self.hj_number}\n")
+
+
+def redcap_retrieve_details(project, record_id):
+    fields_of_interest = ["id_code", "ref_num"]
+    record = project.export_records(fields=fields_of_interest, records = [record_id])
+    return record  # Tagastab dictionary
+
+def redcap_download_available(project):
+    ''' See funktsioon tõmbab alla ainult anonümiseeritud andmed'''
+    fields_of_interest = ["record_id", "taustainfo_complete",'kiirabi_complete', "emo_complete", 'diagnoosid_complete']
+    records = project.export_records(fields=fields_of_interest)
+    results = []
+    for element in records:
         if element["taustainfo_complete"] in ["", "0"] or element["kiirabi_complete"] in ["", "0"] or  element["emo_complete"] in ["", "0"] or element["diagnoosid_complete"] in ["", "0"]:
-            uuritavad.hj_numbrid += [element["ref_num"]]
-            uuritavad.isikukoodid += [element["id_code"]]
-            uuritavad.record_ids += [element["record_id"]]
-    return uuritavad
+            results.append(element["record_id"])
+    return results
+
+class RecordManager():
+    def __init__(self, project):
+        self.record_id_list = redcap_download_available(project)
+        self.records = []
+        self.index = 0
+
+    def current(self):
+        current_record_id = self.record_id_list[self.index]
+        print(f"Current record ID is {current_record_id}")
+        return self.retrieve_record(current_record_id)
+
+    def next(self):
+        self.index += 1
+        print(f"Index is {self.index}")
+        if self.index > len(self.record_id_list):
+            self.index -= 1
+        return self.current()
+
+    def previous(self):
+        self.index -= 1
+        if self.index < 0:
+            self.index = 0
+        return self.current()
+        
+
+    def retrieve_record(self, current_record_id):
+        try:
+            record = self.records[self.index]
+            print("Record found locally")
+            return record
+        except IndexError:
+            print("Record not found locally, retrieveing")
+            record = Record(project, current_record_id)
+            self.records.append(record)
+            return(record)
+        
 
 # Main program flow
-project = redcap_connect()  # Kui API key on juba faili salvestatud ja töötab, siis seostab RedCapi projektiga.
+project = redcap_connect()  # Kui API key on juba faili salvestatud ja töötab, siis seostab RedCapi projektiga. 
 while project is None:
     redcap_create_api_key()  # Kui aga API keyga on mingi probleem, siis laseb kasutajal selle sisestada
     project = redcap_connect()  # Ja seejärel seostab RedCapi projektiga
-uuritavad = redcap_download_list()
-main_window()
+
+record_manager = RecordManager(project)
+ehl = ehlNavigeerimine.ehlMain()
+ehl.ava()
+login_window() # Loob akna, mille kaudu märku anda, kui eHLi on sisse logitud.
+main_window(record_manager) # Avab navigeerimispaneeli
 
     
