@@ -1,0 +1,5 @@
+ADD: Navigeerimise nupud digiloo diagnoosidesse
+BUGFIX: Navigeerimise nupud töötavad kohati alles mitmendal vajutusel
+BUGFIX: Kiirabikaart sulgub pärast avanemist
+ADD: Highlight sõnavara välisest failist
+ADD: Installer
