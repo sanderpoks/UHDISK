@@ -11,6 +11,8 @@ import datetime
 import csv
 from redcap import Project, RedcapError
 
+HIGHLIGHTS_FILE = "./highlights"
+
 
 class ehlMain:
     script_load_delay=5
@@ -52,7 +54,8 @@ class ehlMain:
         self.hospitaliseerimine = []
         self.uhdisk_olemas=""
 
-        self.elements_to_highlight=["pneumoonia","kopsupõletik","kopsupais", "kopsuturse","infarkt", "kopsuarteri trombemboolia", "KATE", "pleuraefusioon", "pneumotooraks", "perikardi efusioon", "õhkrind", "efusioon", "tooraks"]
+        self.elements_to_highlight = self.load_highlights()
+        print(self.elements_to_highlight)
 
         pt_andmed_header = ['record_id']
         kiirabi_header = ['ph', 'ph_complaints___1', 'ph_complaints___2', 'ph_complaints___3', 'ph_complaints___4',
@@ -102,6 +105,15 @@ class ehlMain:
         file.close()
         """
 
+    def load_highlights(self):
+        highlight_list = []
+        try:
+            with open(HIGHLIGHTS_FILE, mode="r") as file:
+                highlight_list = file.read().splitlines()
+            return highlight_list
+        except IOError:
+            print(f"Fail {HIGHLIGHTS_FILE} ei eksisteeri.")
+    
     def ava(self):
         self.driver = webdriver.Chrome(self.PATH)
         self.driver.get("https://ehl.kliinikum.ee")

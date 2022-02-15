@@ -136,7 +136,7 @@ class LoginWindow:
 class Record:
     def __init__(self, project, record_id):
         self.record_id = record_id
-        record = redcap_retrieve_details(project, record_id)[0]
+        record = redcap_retrieve_remote(project, record_id)[0]
         print(record)
         self.isikukood = record["id_code"]
         self.hj_number = record["ref_num"]
@@ -145,7 +145,7 @@ class Record:
         print(f"Record ID:\t{self.record_id}\nIsikukood:\t{self.isikukood}\nHJ number:\t{self.hj_number}\n")
 
 
-def redcap_retrieve_details(project, record_id):
+def redcap_retrieve_remote(project, record_id):
     fields_of_interest = ["id_code", "ref_num"]
     record = project.export_records(fields=fields_of_interest, records = [record_id])
     return record  # Tagastab dictionary
@@ -161,6 +161,7 @@ def redcap_download_available(project):
     return results
 
 class RecordManager():
+    ''' Haldab info järjepidevat allalaadimist RedCapist"'''
     def __init__(self, project):
         self.record_id_list = redcap_download_available(project)
         self.records = []
