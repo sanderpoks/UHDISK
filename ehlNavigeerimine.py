@@ -361,10 +361,10 @@ class ehlMain:
                 self.driver.switch_to.window(handles[i])
                 self.kiirabikaart_tekst = self.driver.find_element(By.ID,"mainTable").text
                 #Sulgen kõrval akna
-                self.driver.close()
+                # self.driver.close()  # Ei sulge esialgu kiirabikaardi akent, et uurijad saaksid manuaalselt tutvuda
                 break
         #Taastan algse akna
-        self.driver.switch_to.window(parent_handle)
+        # self.driver.switch_to.window(parent_handle)  # Ei vaheta fookust ka esialgu, kuni manuaalse täitmisega piirdume
         self.tootle_kiirabikaart()
         self.kiirabikaart_olemas=True
         self.saabus_kiirabiga=True
