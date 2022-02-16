@@ -10,6 +10,7 @@ import pandas as pd
 import datetime
 import csv
 from redcap import Project, RedcapError
+import platform
 
 HIGHLIGHTS_FILE = "./highlights"
 
@@ -23,7 +24,7 @@ class ehlMain:
         self.pt_isikukood = ""
         self.pt_hjnumber = ""
         self.record_id = ""
-        self.PATH = "./chromedriver"
+        self.PATH = self.get_chromedriver_path() #"./chromedriver"
         self.driver = None
         self.kiirabikaart_tekst=""
         self.emo_andmed=""
@@ -105,6 +106,19 @@ class ehlMain:
         file.close()
         """
 
+    def get_chromedriver_path(self):
+        opsys = platform.system()
+        if opsys == "Linux":
+            print("OS Linux")
+            return "./chromedriver/chromedriver_linux"
+        elif opsys == "Windows":
+            print("OS Windows")
+            return "./chromedriver/chromedriver_windows.exe"
+        else:
+            print("Operating system not supported")
+        
+
+    
     def load_highlights(self):
         highlight_list = []
         try:
@@ -364,7 +378,7 @@ class ehlMain:
                 # self.driver.close()  # Ei sulge esialgu kiirabikaardi akent, et uurijad saaksid manuaalselt tutvuda
                 break
         #Taastan algse akna
-        # self.driver.switch_to.window(parent_handle)  # Ei vaheta fookust ka esialgu, kuni manuaalse täitmisega piirdume
+        self.driver.switch_to.window(parent_handle)  # Ei vaheta fookust ka esialgu, kuni manuaalse täitmisega piirdume
         self.tootle_kiirabikaart()
         self.kiirabikaart_olemas=True
         self.saabus_kiirabiga=True
