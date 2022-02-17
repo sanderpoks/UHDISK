@@ -114,6 +114,9 @@ class ehlMain:
         elif opsys == "Windows":
             print("OS Windows")
             return "./chromedriver/chromedriver_windows.exe"
+        elif opsys == "Darwin":
+            print("OS Mac")
+            return "./chromedriver/chromedriver_mac"
         else:
             print("Operating system not supported")
         
