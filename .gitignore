@@ -4,3 +4,7 @@ __pycache__/
 # API key fail
 redcap_api_key
 
+#Build failid
+build/
+dist/
+ehl_assistant.spec
