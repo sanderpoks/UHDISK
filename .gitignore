@@ -8,3 +8,6 @@ redcap_api_key
 build/
 dist/
 ehl_assistant.spec
+dist_linux/
+dist_windows/
+ehl_assistant.zip
