@@ -18,6 +18,7 @@ mkdir dist/chromedriver
 cp chromedriver/chromedriver_windows.exe dist/chromedriver/
 cp -f highlights dist/
 mv dist ehl_assistant
-zip -r ehl_assistant.zip ehl_assistant/
+version=$(head -n 1 version)
+zip -r ehl_assistant_$version.zip ehl_assistant/
 mv ehl_assistant dist_windows
 rm -rf build/

@@ -3,9 +3,17 @@ from redcap import Project, RedcapError
 import tkinter as tk
 import ehlNavigeerimine
 
-APP_TITLE = "ehl_helper"
 REDCAP_KEY_FILENAME = "redcap_api_key"
+VERSION_FILENAME = "./version"
 
+
+def get_version():
+    try:
+        with open(VERSION_FILENAME, mode="r") as file:
+            version = file.read().strip()
+            return version
+    except IOError:
+        print(f"Fail {VERSION_FILENAME} ei eksisteeri.")
 
 def redcap_connect():
     URL = "https://redcap.ut.ee/api/"
@@ -203,6 +211,9 @@ class RecordManager():
         
 
 # Main program flow
+VERSION = get_version()
+APP_TITLE = f"ehl_helper - {VERSION}"
+
 project = redcap_connect()  # Kui API key on juba faili salvestatud ja töötab, siis seostab RedCapi projektiga. 
 while project is None:
     redcap_create_api_key()  # Kui aga API keyga on mingi probleem, siis laseb kasutajal selle sisestada
