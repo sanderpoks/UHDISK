@@ -2,7 +2,7 @@
 rm -rf __pycache__
 rm -rf dist/ build/
 rm -rf dist_linux dist_windows
-rm -f ehl_assistant.zip
+rm -f ehl_assistant*.zip
 
 # Linux version
 pyinstaller -F ./ehl_assistant.py
