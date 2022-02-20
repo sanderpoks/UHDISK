@@ -84,6 +84,8 @@ class MainWindow:
         paevikunupp = tk.Button(botframe, text = "Päevik", command = ehl.ava_paeviku_algus, width = BUTTONWIDTH)
         triaazinupp = tk.Button(botframe, text = "Triaaž", command = ehl.ava_emo_triaaz, width = BUTTONWIDTH)
         epikriisinupp = tk.Button(botframe, text = "Epikriis", command = lambda: ehl.ava_menyy_alajaotis("Epikriis"), width = BUTTONWIDTH)
+        ehl_diagn_nupp = tk.Button(botframe, text = "D (eHL)", command = ehl.ava_diagnoosid, width = BUTTONWIDTH)
+        digilugu_diagn_nupp = tk.Button(botframe, text = "D (DL)", command = ehl.ava_diagnoosid_digilugu, width = BUTTONWIDTH)
 
         jargminenupp = tk.Button(botframe, text = "Järgmine", command = self.next, width = BUTTONWIDTH)
         eelminenupp = tk.Button(botframe, text = "Eelmine", command = self.previous, width = BUTTONWIDTH)
@@ -91,9 +93,11 @@ class MainWindow:
         kiirabinupp.grid(row=0,column=0)
         paevikunupp.grid(row=0, column=1)
         triaazinupp.grid(row=0, column=2)
-        epikriisinupp.grid(row=1,column=1)
-        jargminenupp.grid(row=1,column=2)
+        epikriisinupp.grid(row=0,column=3)
+        jargminenupp.grid(row=1,column=3)
         eelminenupp.grid(row=1,column=0)
+        ehl_diagn_nupp.grid(row=1,column=1)
+        digilugu_diagn_nupp.grid(row=1, column=2)
 
     def refresh_labels(self):
         self.isikukood.set("Isikukood: " + self.active_record.isikukood)
