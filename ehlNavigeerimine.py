@@ -1,6 +1,7 @@
 #import selenium
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
@@ -10,6 +11,9 @@ import pandas as pd
 import datetime
 import csv
 from redcap import Project, RedcapError
+import platform
+
+HIGHLIGHTS_FILE = "./highlights"
 
 
 class ehlMain:
@@ -21,7 +25,7 @@ class ehlMain:
         self.pt_isikukood = ""
         self.pt_hjnumber = ""
         self.record_id = ""
-        self.PATH = "./chromedriver"
+        self.PATH = self.get_chromedriver_path() #"./chromedriver"
         self.driver = None
         self.kiirabikaart_tekst=""
         self.emo_andmed=""
@@ -52,7 +56,7 @@ class ehlMain:
         self.hospitaliseerimine = []
         self.uhdisk_olemas=""
 
-        self.elements_to_highlight=["pneumoonia","kopsupõletik","kopsupais", "kopsuturse","infarkt", "kopsuarteri trombemboolia", "KATE", "pleuraefusioon", "pneumotooraks", "perikardi efusioon", "õhkrind", "efusioon", "tooraks"]
+        self.elements_to_highlight = self.load_highlights()
 
         pt_andmed_header = ['record_id']
         kiirabi_header = ['ph', 'ph_complaints___1', 'ph_complaints___2', 'ph_complaints___3', 'ph_complaints___4',
@@ -102,6 +106,31 @@ class ehlMain:
         file.close()
         """
 
+    def get_chromedriver_path(self):
+        opsys = platform.system()
+        if opsys == "Linux":
+            print("OS Linux")
+            return "./chromedriver/chromedriver_linux"
+        elif opsys == "Windows":
+            print("OS Windows")
+            return "./chromedriver/chromedriver_windows.exe"
+        elif opsys == "Darwin":
+            print("OS Mac")
+            return "./chromedriver/chromedriver_mac"
+        else:
+            print("Operating system not supported")
+        
+
+    
+    def load_highlights(self):
+        highlight_list = []
+        try:
+            with open(HIGHLIGHTS_FILE, mode="r") as file:
+                highlight_list = file.read().splitlines()
+            return highlight_list
+        except IOError:
+            print(f"Fail {HIGHLIGHTS_FILE} ei eksisteeri.")
+    
     def ava(self):
         self.driver = webdriver.Chrome(self.PATH)
         self.driver.get("https://ehl.kliinikum.ee")
@@ -117,13 +146,13 @@ class ehlMain:
             for i in range(len(elements)):
                 element_inner=elements[i].get_attribute("innerHTML")
                 element_inner=element_inner.lower()
-                print(element_inner)
+                #print(element_inner)
                 asendatavad_symbolid = ["'", ":", ";", "=", "\n"]
                 for symbol in asendatavad_symbolid:
                     element_inner = element_inner.replace(symbol, "")
                 new_text=element_inner.replace(word_to_highlight,"<span style=\"background-color: #FFFF00\">"+word_to_highlight+"</span>")
                 #new_text="EMO triaazis-> RR: 156/74mmHg, fr: 72x', SpO2: 97%, T:36,6C"
-                print(new_text)
+                #print(new_text)
                 #new_text="AAA"
                 #print("arguments[0].innerText = "+new_text)
                 self.driver.execute_script("arguments[0].innerHTML = \'"+new_text+"\'", elements[i])
@@ -349,10 +378,10 @@ class ehlMain:
                 self.driver.switch_to.window(handles[i])
                 self.kiirabikaart_tekst = self.driver.find_element(By.ID,"mainTable").text
                 #Sulgen kõrval akna
-                self.driver.close()
+                # self.driver.close()  # Ei sulge esialgu kiirabikaardi akent, et uurijad saaksid manuaalselt tutvuda
                 break
         #Taastan algse akna
-        self.driver.switch_to.window(parent_handle)
+        self.driver.switch_to.window(parent_handle)  # Ei vaheta fookust ka esialgu, kuni manuaalse täitmisega piirdume
         self.tootle_kiirabikaart()
         self.kiirabikaart_olemas=True
         self.saabus_kiirabiga=True
@@ -365,7 +394,7 @@ class ehlMain:
             #Väljasta andmed
             #Välju programmist
             return
-        print(toorandmed)
+        #print(toorandmed)
         for i in toorandmed:
             #Kvalitatiivne hingamissagedus
             if "Hingamissageduse tase" in i and self.kiirabi[9]=="" and len(i.split(" ")) == 3:
@@ -487,9 +516,9 @@ class ehlMain:
         if "sinine" in triaazi_varv:
             self.emo_triaaz_varv="5"
         """
-        print("Emo triaazi värv ja kaebused:")
-        print(self.emo_triaaz_varv)
-        print(self.emo_kaebused)
+        #print("Emo triaazi värv ja kaebused:")
+        #print(self.emo_triaaz_varv)
+        #print(self.emo_kaebused)
 
         self.tootle_emo()
 
@@ -567,9 +596,33 @@ class ehlMain:
         self.tootle_diagnoosid()
         return
 
+    def ava_diagnoosid_digilugu(self):
+        startdate = "01.01.1990"
+        self.ava_menyy_alajaotis("Digiloo päringud")
+        try:
+            # Esmalt avame õige iframe'i
+            element = WebDriverWait(self.driver, self.page_load_delay).until(EC.presence_of_element_located((By.ID, "angularIframe")))
+            self.driver.switch_to.frame(element)
+            # Siis otsime diagnooside radio inputi
+            element = WebDriverWait(self.driver, self.page_load_delay).until(EC.presence_of_element_located((By.NAME, "51")))
+            element.click()
+            # Suus valime filtri alguskuupäeva inputi ja täidame selle
+            element = self.driver.find_element(By.XPATH, "/html/body/ui-view/div[2]/div[2]/hc-navbar-filter/div/div/div[3]/div/span/form/div[1]/div[4]/div/hc-date-picker[1]/div/input")
+            element.clear()
+            element.send_keys(Keys.HOME)
+            element.send_keys(startdate)
+            element.send_keys(Keys.ENTER)
+            # Ja lõpuks vajutame otsimisnuppu
+            element = self.driver.find_element(By.XPATH, "/html/body/ui-view/div[2]/div[2]/hc-navbar-filter/div/div/div[3]/div/span/form/div[2]/div/button")
+            element.click()
+        except TimeoutException:
+            return 0
+        finally:
+            self.driver.switch_to.default_content()
+
     def tootle_diagnoosid(self):
         toorandmed = self.diagnoosid_tekst.lower()
-        print(toorandmed)
+        #print(toorandmed)
         sydamepuudulikkus = ["südamepuudulikkus", "i50"]
         kok_astma = ["krooniline obstruktiivne kopsuhaigus", "astma", "j45", "j44"]
 
@@ -587,8 +640,8 @@ class ehlMain:
             if self.diagnoosid[i]=="":
                 self.diagnoosid[i]="0"
 
-        print("Töötle diagnoosid:")
-        print(self.diagnoosid)
+        #print("Töötle diagnoosid:")
+        #print(self.diagnoosid)
         return
 
     def ava_paeviku_algus(self):
