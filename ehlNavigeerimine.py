@@ -125,7 +125,7 @@ class ehlMain:
     def load_highlights(self):
         highlight_list = []
         try:
-            with open(HIGHLIGHTS_FILE, mode="r") as file:
+            with open(HIGHLIGHTS_FILE, mode="r", encoding="utf-8") as file:
                 highlight_list = file.read().splitlines()
             return highlight_list
         except IOError:
@@ -139,23 +139,18 @@ class ehlMain:
         self.driver.quit()
 
     def highlight_elements(self):
-        for word_to_highlight in self.elements_to_highlight:
-            #Siin peame otsima nii suure kui väikese tähega => tuleb muuta universaalseks => selleks kasutan translate() funktsiooni
-            elements = self.driver.find_elements(By.XPATH, "//td[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'),'" + word_to_highlight + "')]")
+        elements = self.driver.find_elements(By.TAG_NAME,"td")
+        for i in range(len(elements)):
+            element_inner = elements[i].get_attribute("innerHTML")  # Võtame td HTML koodi
+            element_inner = element_inner.lower()  # Muudame kõik HTML koodi sisemuse väikesteks tähtedeks
 
-            for i in range(len(elements)):
-                element_inner=elements[i].get_attribute("innerHTML")
-                element_inner=element_inner.lower()
-                #print(element_inner)
-                asendatavad_symbolid = ["'", ":", ";", "=", "\n"]
-                for symbol in asendatavad_symbolid:
-                    element_inner = element_inner.replace(symbol, "")
-                new_text=element_inner.replace(word_to_highlight,"<span style=\"background-color: #FFFF00\">"+word_to_highlight+"</span>")
-                #new_text="EMO triaazis-> RR: 156/74mmHg, fr: 72x', SpO2: 97%, T:36,6C"
-                #print(new_text)
-                #new_text="AAA"
-                #print("arguments[0].innerText = "+new_text)
-                self.driver.execute_script("arguments[0].innerHTML = \'"+new_text+"\'", elements[i])
+            asendatavad_symbolid = ["'", ":", ";", "=", "\n"]
+            for symbol in asendatavad_symbolid:
+                element_inner = element_inner.replace(symbol,"")  # Asendame kõik HTML sümbolid, mis tekitavad Pythoni koodis erroreid.
+
+            for word_to_highlight in self.elements_to_highlight:
+                element_inner=element_inner.replace(word_to_highlight,"<span style=\"background-color: #FFFF00\">"+word_to_highlight+"</span>")
+            self.driver.execute_script("arguments[0].innerHTML = \'" + element_inner + "\'", elements[i])
     #mitte registrid
     def haiguslugude_otsimine_EMO_konto(self, hj_number):
 
