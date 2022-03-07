@@ -86,7 +86,10 @@ class MainWindow:
         
         tk.Label(topframe, textvariable=self.isikukood).pack(expand=True)
         tk.Label(topframe, textvariable=self.hj_number).pack(expand=True)
-        tk.Label(topframe, textvariable=self.record_id).pack(expand=True)
+        self.record_label = tk.Label(topframe, textvariable=self.record_id)
+        self.record_label.pack(expand=True)
+        self.record_label.bind("<Double-Button-1>", self.edit_case)
+
 
         kiirabinupp = tk.Button(botframe, text = "Kiirabi", command = ehl.ava_kiirabi_kaart, width = BUTTONWIDTH)
         paevikunupp = tk.Button(botframe, text = "Päevik", command = ehl.ava_paeviku_algus, width = BUTTONWIDTH)
@@ -108,9 +111,9 @@ class MainWindow:
         digilugu_diagn_nupp.grid(row=1, column=2)
 
     def refresh_labels(self):
-        self.isikukood.set("Isikukood: " + self.active_record.isikukood)
-        self.hj_number.set("Haigusjuhu number: " + self.active_record.hj_number)
-        self.record_id.set("Juhu number: " + self.active_record.record_id)
+        self.isikukood.set("Isikukood: " + str(self.active_record.isikukood))
+        self.hj_number.set("Haigusjuhu number: " + str(self.active_record.hj_number))
+        self.record_id.set("Juhu number: " + str(self.active_record.record_id))
 
     def next(self):
         self.active_record = self.record_manager.next()
@@ -122,6 +125,28 @@ class MainWindow:
         ehl.haiguslugude_otsimine(self.active_record.isikukood, self.active_record.hj_number)
         self.refresh_labels()
 
+    def navigate_to(self, record_id):
+        self.record_manager = RecordManager(None) # Loome uue navigeerimisindeksi, mis ei piira navigeerimist ainult meie DAGidele
+        self.active_record = self.record_manager.goto_record(record_id)
+        ehl.haiguslugude_otsimine(self.active_record.isikukood, self.active_record.hj_number)
+        self.refresh_labels()
+
+    def edit_case(self, event):
+        widget = event.widget
+        case_entry = tk.Entry(widget)
+        case_entry.place(x=0, y=0, anchor="nw", relwidth=1.0, relheight=1.0)
+        case_entry.bind("<Return>", self.remove_case_entry)
+        case_entry.insert(tk.END, self.active_record.record_id)
+        case_entry.focus_set()
+
+    def remove_case_entry(self, event):
+        entry = event.widget
+        entry_result = entry.get()
+        if entry_result.isnumeric():
+            entry_result = int(entry_result)
+            self.navigate_to(entry_result)
+        entry.destroy()
+        
 
 def main_window(record_manager):
     root = tk.Tk()
@@ -175,7 +200,10 @@ def redcap_download_available(project):
 class RecordManager():
     ''' Haldab info järjepidevat allalaadimist RedCapist"'''
     def __init__(self, project):
-        self.record_id_list = redcap_download_available(project)
+        if project == None: # Kui navigeerime kõiki Redcapi uuritavaid sõltumata staatusest ja DAGist
+            self.record_id_list = range(1,21299) #Kokku 21299 uuritavat
+        else:   # Kui navigeerime ainult meie DAGi uurimata uuritavaid
+            self.record_id_list = redcap_download_available(project)
         self.records = []
         self.index = 0
 
@@ -195,6 +223,11 @@ class RecordManager():
         self.index -= 1
         if self.index < 0:
             self.index = 0
+        return self.current()
+
+    def goto_record(self, record_id):
+        self.current_record_id = record_id
+        self.index = record_id - 1
         return self.current()
         
 
