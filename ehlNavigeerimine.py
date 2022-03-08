@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
 from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import pandas as pd
@@ -130,6 +130,26 @@ class ehlMain:
             return highlight_list
         except IOError:
             print(f"Fail {HIGHLIGHTS_FILE} ei eksisteeri.")
+
+    def get_element(self, by, expression, name, clickable=False):
+        """ See funktsioon abstrahheerib seleniumis elemendi leidmise ning võtab arvesse laadimisaega ja blokeerivaid elemente"""
+        #print(f"get_element: Otsin elementi {name}")
+        try:
+            if clickable == False:
+                element_present = EC.presence_of_element_located((by, expression))
+                element = WebDriverWait(self.driver, self.page_load_delay).until(element_present)
+            elif clickable == True:
+                element_clickable = EC.element_to_be_clickable((by, expression))
+                if element_clickable:
+                    print(f"Element is clickable")
+                element = WebDriverWait(self.driver, self.page_load_delay).until(element_clickable)
+            return element
+        except TimeoutException:
+            print(f"Timeout: Elementi {name} ei jõutud ära oodata")
+            return 0
+        #except Exception as e:
+        #    print(f"Unhandled exception - {e}")
+        
     
     def ava(self):
         self.driver = webdriver.Chrome(self.PATH)
@@ -329,22 +349,27 @@ class ehlMain:
         return 1
 
     def ava_menyy_alajaotis(self, valik):
-        try:  # ootame kuni javascript menüü ilmub nähtavale
-            element_present = EC.presence_of_element_located((By.CLASS_NAME, "arrow"))
-            WebDriverWait(self.driver, self.page_load_delay).until(element_present)
-        except TimeoutException:
-            return 0 #Põhjust ei olnud vaja sisestada
-        menu = self.driver.find_element(By.CLASS_NAME,"arrow")
+        #try:  # ootame kuni javascript menüü ilmub nähtavale
+        #    element_present = EC.presence_of_element_located((By.CLASS_NAME, "arrow"))
+        #    WebDriverWait(self.driver, self.page_load_delay).until(element_present)
+        #except TimeoutException:
+        #    return 0 #Põhjust ei olnud vaja sisestada
+        #menu = self.driver.find_element(By.CLASS_NAME,"arrow")
+        menu = self.get_element(By.CLASS_NAME, "arrow", "Rippmenüü nool")
 
 
-        hidden = self.driver.find_element(By.XPATH,"//a[contains(text(),'"+valik+"')]")
+        #hidden = self.driver.find_element(By.XPATH,"//a[contains(text(),'"+valik+"')]")
+        hidden = self.get_element(By.XPATH, "//a[contains(text(),'"+valik+"')]", "Menüülement " + valik)
 
-        actions = ActionChains(self.driver)
-        actions.move_to_element(menu)
-        actions.pause(1)
-        actions.click(hidden)
-        actions.perform()
-        return 1
+        try:
+            actions = ActionChains(self.driver)
+            actions.move_to_element(menu)
+            actions.pause(1)
+            actions.click(hidden)
+            actions.perform()
+            return 1
+        except Exception as e:
+            print(f"Rippmenüü navigeerimisel tekkis probleem: {e}")
 
     def ava_kiirabi_kaart(self):
         self.ava_menyy_alajaotis("Päevik")
@@ -646,10 +671,17 @@ class ehlMain:
 
     def ava_paeviku_algus(self):
         self.ava_menyy_alajaotis("Päevik")
-        self.driver.find_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']").click()
-        self.driver.find_element(By.XPATH, "//a[@arn-evntid='showAll']").click()
+        #self.driver.find_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']").click()
+        self.get_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']", "Kõikide päevade sissekanded").click()
+        #self.driver.find_element(By.XPATH, "//a[@arn-evntid='showAll']").click()
+        self.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki").click()
         sleep(1)
-        self.driver.find_element(By.XPATH, "//a[@arn-evntid='order']").click()
+        #self.driver.find_element(By.XPATH, "//a[@arn-evntid='order']").click()
+        element = self.get_element(By.XPATH, "//a[@arn-evntid='order']", "Reasta kronoloogiliselt", clickable=True)
+        try:
+            element.click()
+        except ElementClickInterceptedException as e:
+            print(f"Viga: Element {element} ei ole klikitav. - {e}")
         sleep(1)
         self.highlight_elements()
 
