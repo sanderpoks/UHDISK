@@ -2,6 +2,11 @@
 from redcap import Project, RedcapError
 import tkinter as tk
 import ehlNavigeerimine
+import os
+import sys
+
+# Viime aktiivse töökausta faili asukohta, et lisafailid oleks leitavad
+os.chdir(os.path.dirname(sys.argv[0]))
 
 REDCAP_KEY_FILENAME = "redcap_api_key"
 VERSION_FILENAME = "./version"
