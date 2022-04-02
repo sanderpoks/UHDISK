@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, ElementNotInteractableException
 from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import pandas as pd
@@ -146,9 +146,37 @@ class ehlMain:
             return element
         except TimeoutException:
             print(f"Timeout: Elementi {name} ei jõutud ära oodata")
-            return 0
+            raise
         #except Exception as e:
         #    print(f"Unhandled exception - {e}")
+
+    def navigeeri(self, element):
+        counter = 0
+        while counter < 5:
+            try:
+                print(f"Funktsion NAVIGEERI parameetriga {element}")
+                if element == "kiirabi":
+                    self.ava_kiirabi_kaart()                    
+                elif element == "paevik":
+                    self.ava_paeviku_algus()
+                elif element == "triaaz":
+                    self.ava_emo_triaaz()
+                elif element == "diagnoosid":
+                    self.ava_diagnoosid()
+                elif element == "digilugu_diagnoosid":
+                    self.ava_diagnoosid_digilugu()
+                else:
+                    self.ava_menyy_alajaotis(element)
+            except ElementNotInteractableException:
+                print("ERROR: ElementNotInteractableException")
+                sleep(3)
+                continue
+            else: # Erroreid ei esinenud, lõpetame navigeerimise
+                return
+            finally:
+                counter += 1
+            
+                
         
     
     def ava(self):
@@ -159,23 +187,25 @@ class ehlMain:
         self.driver.quit()
 
     def highlight_elements(self):
-        for word_to_highlight in self.elements_to_highlight:
-            #Siin peame otsima nii suure kui väikese tähega => tuleb muuta universaalseks => selleks kasutan translate() funktsiooni
-            elements = self.driver.find_elements(By.XPATH, "//td[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'),'" + word_to_highlight + "')]")
+        pass
+##        for word_to_highlight in self.elements_to_highlight:
+##            #Siin peame otsima nii suure kui väikese tähega => tuleb muuta universaalseks => selleks kasutan translate() funktsiooni
+##            elements = self.driver.find_elements(By.XPATH, "//td[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'),'" + word_to_highlight + "')]")
+##
+##            for i in range(len(elements)):
+##                element_inner=elements[i].get_attribute("innerHTML")
+##                element_inner=element_inner.lower()
+##                #print(element_inner)
+##                asendatavad_symbolid = ["'", ":", ";", "=", "\n"]
+##                for symbol in asendatavad_symbolid:
+##                    element_inner = element_inner.replace(symbol, "")
+##                new_text=element_inner.replace(word_to_highlight,"<span style=\"background-color: #FFFF00\">"+word_to_highlight+"</span>")
+##                #new_text="EMO triaazis-> RR: 156/74mmHg, fr: 72x', SpO2: 97%, T:36,6C"
+##                #print(new_text)
+##                #new_text="AAA"
+##                #print("arguments[0].innerText = "+new_text)
+##                self.driver.execute_script("arguments[0].innerHTML = \'"+new_text+"\'", elements[i])
 
-            for i in range(len(elements)):
-                element_inner=elements[i].get_attribute("innerHTML")
-                element_inner=element_inner.lower()
-                #print(element_inner)
-                asendatavad_symbolid = ["'", ":", ";", "=", "\n"]
-                for symbol in asendatavad_symbolid:
-                    element_inner = element_inner.replace(symbol, "")
-                new_text=element_inner.replace(word_to_highlight,"<span style=\"background-color: #FFFF00\">"+word_to_highlight+"</span>")
-                #new_text="EMO triaazis-> RR: 156/74mmHg, fr: 72x', SpO2: 97%, T:36,6C"
-                #print(new_text)
-                #new_text="AAA"
-                #print("arguments[0].innerText = "+new_text)
-                self.driver.execute_script("arguments[0].innerHTML = \'"+new_text+"\'", elements[i])
     #mitte registrid
     def haiguslugude_otsimine_EMO_konto(self, hj_number):
 
@@ -361,15 +391,15 @@ class ehlMain:
         #hidden = self.driver.find_element(By.XPATH,"//a[contains(text(),'"+valik+"')]")
         hidden = self.get_element(By.XPATH, "//a[contains(text(),'"+valik+"')]", "Menüülement " + valik)
 
-        try:
-            actions = ActionChains(self.driver)
-            actions.move_to_element(menu)
-            actions.pause(1)
-            actions.click(hidden)
-            actions.perform()
-            return 1
-        except Exception as e:
-            print(f"Rippmenüü navigeerimisel tekkis probleem: {e}")
+        actions = ActionChains(self.driver)
+        actions.move_to_element(menu)
+        actions.pause(1)
+        actions.click(hidden)
+        actions.perform()
+        return 1
+            
+        #except Exception as e:
+        #    print(f"Rippmenüü navigeerimisel tekkis probleem: {e}")
 
     def ava_kiirabi_kaart(self):
         self.ava_menyy_alajaotis("Päevik")
@@ -670,20 +700,24 @@ class ehlMain:
         return
 
     def ava_paeviku_algus(self):
-        self.ava_menyy_alajaotis("Päevik")
-        #self.driver.find_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']").click()
-        self.get_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']", "Kõikide päevade sissekanded").click()
-        #self.driver.find_element(By.XPATH, "//a[@arn-evntid='showAll']").click()
-        self.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki").click()
-        sleep(1)
-        #self.driver.find_element(By.XPATH, "//a[@arn-evntid='order']").click()
-        element = self.get_element(By.XPATH, "//a[@arn-evntid='order']", "Reasta kronoloogiliselt", clickable=True)
         try:
-            element.click()
-        except ElementClickInterceptedException as e:
-            print(f"Viga: Element {element} ei ole klikitav. - {e}")
-        sleep(1)
-        self.highlight_elements()
+            self.ava_menyy_alajaotis("Päevik")
+            #self.driver.find_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']").click()
+            self.get_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']", "Kõikide päevade sissekanded").click()
+            #self.driver.find_element(By.XPATH, "//a[@arn-evntid='showAll']").click()
+            self.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki").click()
+            sleep(1)
+            #self.driver.find_element(By.XPATH, "//a[@arn-evntid='order']").click()
+            element = self.get_element(By.XPATH, "//a[@arn-evntid='order']", "Reasta kronoloogiliselt", clickable=True)
+            try:
+                element.click()
+            except ElementClickInterceptedException as e:
+                print(f"Viga: Element {element} ei ole klikitav. - {e}")
+            sleep(1)
+            self.highlight_elements()
+        except TimeoutError:
+            print(f"Timeout: Päeviku avamine")
+            return 0
 
     def lugu_ei_sobi(self):
         self.kiirabikaart_tekst = ""
