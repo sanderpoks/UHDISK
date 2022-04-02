@@ -2,6 +2,7 @@
 rm -rf __pycache__
 rm -rf dist/ build/
 rm -rf dist_mac/
+rm -rf ehl_assistant_mac*.zip
 
 # Mac version
 pyinstaller -F ./ehl_assistant.py
