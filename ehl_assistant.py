@@ -119,14 +119,6 @@ class MainWindow:
         self.record_label.pack(expand=True)
         self.record_label.bind("<Double-Button-1>", self.edit_case)
 
-
-##        kiirabinupp = tk.Button(botframe, text = "Kiirabi", command = ehl.ava_kiirabi_kaart, width = BUTTONWIDTH)
-##        paevikunupp = tk.Button(botframe, text = "Päevik", command = ehl.ava_paeviku_algus, width = BUTTONWIDTH)
-##        triaazinupp = tk.Button(botframe, text = "Triaaž", command = ehl.ava_emo_triaaz, width = BUTTONWIDTH)
-##        epikriisinupp = tk.Button(botframe, text = "Epikriis", command = lambda: ehl.ava_menyy_alajaotis("Epikriis"), width = BUTTONWIDTH)
-##        ehl_diagn_nupp = tk.Button(botframe, text = "D (eHL)", command = ehl.ava_diagnoosid, width = BUTTONWIDTH)
-##        digilugu_diagn_nupp = tk.Button(botframe, text = "D (DL)", command = ehl.ava_diagnoosid_digilugu, width = BUTTONWIDTH)
-
         kiirabinupp = tk.Button(botframe, text = "Kiirabi", command = lambda:ehl.navigeeri("kiirabi"), width = BUTTONWIDTH)
         paevikunupp = tk.Button(botframe, text = "Päevik", command = lambda:ehl.navigeeri("paevik"), width = BUTTONWIDTH)
         triaazinupp = tk.Button(botframe, text = "Triaaž", command = lambda:ehl.navigeeri("triaaz"), width = BUTTONWIDTH)

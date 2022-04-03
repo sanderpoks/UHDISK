@@ -152,6 +152,7 @@ class ehlMain:
 
     def navigeeri(self, element):
         counter = 0
+        timeout = 3
         while counter < 5:
             try:
                 print(f"Funktsion NAVIGEERI parameetriga {element}")
@@ -169,7 +170,11 @@ class ehlMain:
                     self.ava_menyy_alajaotis(element)
             except ElementNotInteractableException:
                 print("ERROR: ElementNotInteractableException")
-                sleep(3)
+                sleep(timeout)
+                continue
+            except ElementClickInterceptedException:
+                print("ERROR: ElementClickInterceptedException")
+                sleep(timeout)
                 continue
             else: # Erroreid ei esinenud, lõpetame navigeerimise
                 return
@@ -700,24 +705,14 @@ class ehlMain:
         return
 
     def ava_paeviku_algus(self):
-        try:
-            self.ava_menyy_alajaotis("Päevik")
-            #self.driver.find_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']").click()
-            self.get_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']", "Kõikide päevade sissekanded").click()
-            #self.driver.find_element(By.XPATH, "//a[@arn-evntid='showAll']").click()
-            self.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki").click()
-            sleep(1)
-            #self.driver.find_element(By.XPATH, "//a[@arn-evntid='order']").click()
-            element = self.get_element(By.XPATH, "//a[@arn-evntid='order']", "Reasta kronoloogiliselt", clickable=True)
-            try:
-                element.click()
-            except ElementClickInterceptedException as e:
-                print(f"Viga: Element {element} ei ole klikitav. - {e}")
-            sleep(1)
-            self.highlight_elements()
-        except TimeoutError:
-            print(f"Timeout: Päeviku avamine")
-            return 0
+        self.ava_menyy_alajaotis("Päevik")
+        self.get_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']", "Kõikide päevade sissekanded").click()
+        self.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki").click()
+        sleep(1)
+        element = self.get_element(By.XPATH, "//a[@arn-evntid='order']", "Reasta kronoloogiliselt", clickable=True)
+        element.click()
+        sleep(1)
+        self.highlight_elements()
 
     def lugu_ei_sobi(self):
         self.kiirabikaart_tekst = ""
