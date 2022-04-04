@@ -49,6 +49,7 @@ class Uuritav:
 
         # Start scraping
         self.fill_nav_data()
+        self.print()
         
         self.ehl_navigate()
         
@@ -100,7 +101,7 @@ class Uuritav:
         pass
 
 def get_redcap_id_list():
-    return [100]
+    return [2550]
     #return range(500,510)
     #return [250,272,290]
     #pass
@@ -111,5 +112,4 @@ login_window("eHL Scraper")
 redcap_id_list = get_redcap_id_list()
 for rc_id in redcap_id_list:
     uuritav = Uuritav(rc_id)
-    uuritav.print()
     # Upload to redcap?
