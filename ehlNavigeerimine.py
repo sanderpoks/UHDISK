@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, ElementNotInteractableException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, ElementNotInteractableException, NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import pandas as pd
@@ -131,24 +131,32 @@ class ehlMain:
         except IOError:
             print(f"Fail {HIGHLIGHTS_FILE} ei eksisteeri.")
 
-    def get_element(self, by, expression, name, clickable=False):
+    def get_element(self, by, expression, name, clickable=False, check=False):
         """ See funktsioon abstrahheerib seleniumis elemendi leidmise ning võtab arvesse laadimisaega ja blokeerivaid elemente"""
-        #print(f"get_element: Otsin elementi {name}")
+        if check == True:
+            print(f"get_element: Kontrollin, kas element {name} eksisteerib")
+        else:
+            print(f"get_element: Otsin elementi {name}")
+            
+        if check == True:
+            try:
+                self.driver.find_element(by, expression)
+            except NoSuchElementException:
+                print(f"Elementi {name} ei eksisteeri")
+                return None
+        
         try:
             if clickable == False:
                 element_present = EC.presence_of_element_located((by, expression))
                 element = WebDriverWait(self.driver, self.page_load_delay).until(element_present)
             elif clickable == True:
                 element_clickable = EC.element_to_be_clickable((by, expression))
-                if element_clickable:
-                    print(f"Element is clickable")
                 element = WebDriverWait(self.driver, self.page_load_delay).until(element_clickable)
             return element
         except TimeoutException:
             print(f"Timeout: Elementi {name} ei jõutud ära oodata")
             raise
-        #except Exception as e:
-        #    print(f"Unhandled exception - {e}")
+
 
     def navigeeri(self, element):
         counter = 0
@@ -251,149 +259,106 @@ class ehlMain:
 
     #registritest:
     def haiguslugude_otsimine(self, isikukood, hj_number):
-        # Nulli kõik väärtused:
-        self.kiirabikaart_tekst = ""
-        self.emo_andmed = ""
-        self.diagnoosid_tekst = ""
-        self.kiirabikaart_olemas = False
-        self.saabus_kiirabiga = False
-        self.kiirabi = [""] * 23
-        for i in range(1, 8):
-            self.kiirabi[i] = "0"
-        self.kiirabi_anamnees = ""
-        self.emo = [""] * 22
-        # Muudame 0 - 6 elemendid "0"deks
-        for i in range(7):
-            self.emo[i] = "0"
-        self.emo_kaebused = ""
-        self.emo_triaaz_varv = "6"
-        self.diagnoosid = [""] * 52
-        for i in range(4, 12):
-            self.diagnoosid[i] = "0"
-        for i in range(15, 36):
-            self.diagnoosid[i] = "0"
-        self.juhtiv_diagnoos = []
-        self.hospitaliseerimine = []
-        self.uhdisk_olemas = ""
-
+ 
         #Kui eelmine haiguslugu lahti, siis sulge
-        if self.driver.find_elements(By.ID,"patientBarExitLink"):
+        if self.get_element(By.ID,"patientBarExitLink", "Loo sulgemise X", check=True):            
             #Ava registrid:
-            self.driver.find_element(By.XPATH,"//a[@title='Konto valik']").click()
-            try:
-                element_present = EC.presence_of_element_located((By.XPATH, "//a[contains(text(),'Registrid')]"))
-                WebDriverWait(self.driver, self.script_load_delay).until(element_present)
-            except TimeoutException:
-                return
-            sleep(1)
-            self.driver.find_element(By.XPATH, "//a[contains(text(),'Registrid')]").click()
+            element = self.get_element(By.XPATH,"//a[@title='Konto valik']", "Konto valik dropdown", clickable=True)
+            element.click()
+            
+            element = self.get_element(By.XPATH, "//a[contains(text(),'Registrid')]", 'Konto "Registrid"', clickable=True)
+            element.click()
+            
             #Oota, kuni laeb ära:
             try:
-                element_present = EC.presence_of_element_located((By.XPATH, "//div[@id='nav']"))
-                WebDriverWait(self.driver, self.page_load_delay).until(element_present)
+                self.get_element(By.XPATH, "//div[@id='nav']",'Tab "Registrid"')
             except TimeoutException:
                 return
 
         #Muudame arvelduse menüü nähtavaks
         self.driver.find_element(By.XPATH, "//div[@id='nav']").find_element(By.ID, "nav01").find_element(By.TAG_NAME,"a").click()
         try:
-            element_present = EC.presence_of_element_located((By.LINK_TEXT, "Patsiendid"))
-            WebDriverWait(self.driver, self.script_load_delay).until(element_present)
+            self.get_element(By.LINK_TEXT, "Patsiendid", 'Menüüvalik "Patsiendid"')
         except TimeoutException:
             #Script ei laadinud piisavalt kiirelt, funktsioon lõpetab
             return
 
         #Valime menüüst "haiguslugude otsimine"
-        self.driver.find_element(By.LINK_TEXT, "Patsiendid").click()
+        element = self.get_element(By.LINK_TEXT, "Patsiendid", 'Menüüvalik "Patsiendid"', clickable=True)
+        element.click()
 
-        #Ootame kuni laeb ja sisestame haigusjuhu numbri, mida soovime otsida
-        try:
-            element_present = EC.presence_of_element_located((By.XPATH, "//input[@value='Otsi']"))
-            WebDriverWait(self.driver, self.page_load_delay).until(element_present)
-        except TimeoutException:
-            return
-        self.driver.find_element(By.ID,"m.f0.rootWidget.topC.f0.menuContainer.f0.menu.f0.f0.filterWidget.form.legalCode").send_keys(isikukood)
+        element = self.get_element(By.ID,"m.f0.rootWidget.topC.f0.menuContainer.f0.menu.f0.f0.filterWidget.form.legalCode", "Isikukoodi väli")
+        element.send_keys(isikukood)
 
         # Vajutame otsi nuppu
-        self.driver.find_element(By.XPATH, "//input[@value='Otsi']").click()
+        element = self.get_element(By.XPATH, "//input[@value='Otsi']", "Otsi nupp", clickable=True)
+        element.click()
+        
         sleep(0.5)
-
-        #Laeme ära ja vaatame, kas pt on juba andmebaasis
-        #if not self.driver.find_elements(By.XPATH, "//*[contains(text(),'Otsinguparameetritele vastavat kirjet ei leitud!')]")
-
 
         #Ootame kuni laeb ja kontrollime, kas pt on registris:
         try:
-            element_present = EC.presence_of_element_located((By.XPATH, "//input[@value='Lisa isikuid valimisse']"))
-            WebDriverWait(self.driver, self.script_load_delay).until(element_present)
+            self.get_element(By.XPATH, "//input[@value='Lisa isikuid valimisse']", 'Nupp "Lisa isikud valimisse"')
         except TimeoutException:
             #Ei leidnud soovitud HJ, funktsioon tagastab 0
             return
 
-        if not self.driver.find_elements(By.XPATH, "//a[@arn-evntid='showTreatmentHistory']"):
+        if not self.get_element(By.XPATH, "//a[@arn-evntid='showTreatmentHistory']", "Raviajalugu", check=True):
             #Lisame patsiendi registrisse
             self.lisa_isik_registrisse()
 
-        self.driver.find_element(By.XPATH,"//a[@arn-evntid='showTreatmentHistory']").click()
-
+        element = self.get_element(By.XPATH,"//a[@arn-evntid='showTreatmentHistory']", "Raviajalugu", clickable=True)
+        element.click()
 
         #Ootame kuni laeb ja siis avame kõik haigusjuhud:
         try:
-            element_present = EC.presence_of_element_located((By.XPATH, "//a[@arn-evntid='showAll']"))
-            WebDriverWait(self.driver, self.script_load_delay).until(element_present)
+            self.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki")
         except TimeoutException:
             return
-        self.driver.find_element(By.XPATH, "//a[@arn-evntid='showAll']").click()
+        
+        element = self.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki", clickable=True)
+        element.click()
         sleep(1)
 
         #Kui lugu olemas, siis scrolli ja ava see
-        if not self.driver.find_elements(By.LINK_TEXT, str(hj_number)):
+        if not self.get_element(By.LINK_TEXT, str(hj_number), "Haigusjuhu number", check=True):
             return
 
-        #lugu = self.driver.find_element(By.XPATH, "//a[contains(text(),'"+str(hj_number)+"')]")
-        lugu = self.driver.find_element(By.LINK_TEXT, str(hj_number))
+        lugu = self.get_element(By.LINK_TEXT, str(hj_number), "Haigusjuhu number")
         actions = ActionChains(self.driver)
         # Scrollime lehel otsitava elemendini
         actions.move_to_element(lugu).click().perform()
         self.andmete_vaatamise_pohjendus()
-
         return
 
     def lisa_isik_registrisse(self):
-        self.driver.find_element(By.XPATH, "//input[@value='Lisa isikuid valimisse']").click()
+        element = self.get_element(By.XPATH, "//input[@value='Lisa isikuid valimisse']", 'Nupp "Lisa isikud valimisse"', clickable=True)
+        element.click()
         try:
-            element_present = EC.presence_of_element_located((By.XPATH, "//button[@arn-evntid='complete']"))
-            WebDriverWait(self.driver, self.script_load_delay).until(element_present)
+            self.get_element(By.XPATH, "//button[@arn-evntid='complete']", 'Nupp "Valmis"')
         except TimeoutException:
             return
-        self.driver.find_element(By.XPATH, "//button[@arn-evntid='complete']").click()
+        element = self.get_element(By.XPATH, "//button[@arn-evntid='complete']", 'Nupp "Valmis"')
+        element.click()
         return
 
     def andmete_vaatamise_pohjendus(self):
         try:  # ootame kuni javascript menüü ilmub nähtavale
-            element_present = EC.presence_of_element_located((By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH"))
-            WebDriverWait(self.driver, self.script_load_delay).until(element_present)
+            self.get_element(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö")
         except TimeoutException:
             return 0 #Põhjust ei olnud vaja sisestada
 
-        if self.driver.find_elements(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH"):
-            self.driver.find_element(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH").click()
-            self.driver.find_element(By.XPATH, "//input[@value='Jätka']").click()
-
+        if self.get_element(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö", check=True):
+            element = self.get_element(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö")
+            element.click()
+            element = self.get_element(By.XPATH, "//input[@value='Jätka']", 'Nupp "Jätka"', clickable=True)
+            element.click()
         #Andmete vaatamise põhjendus oli vajalik funktsioon tagastab 1
         return 1
 
     def ava_menyy_alajaotis(self, valik):
-        #try:  # ootame kuni javascript menüü ilmub nähtavale
-        #    element_present = EC.presence_of_element_located((By.CLASS_NAME, "arrow"))
-        #    WebDriverWait(self.driver, self.page_load_delay).until(element_present)
-        #except TimeoutException:
-        #    return 0 #Põhjust ei olnud vaja sisestada
-        #menu = self.driver.find_element(By.CLASS_NAME,"arrow")
+
         menu = self.get_element(By.CLASS_NAME, "arrow", "Rippmenüü nool")
-
-
-        #hidden = self.driver.find_element(By.XPATH,"//a[contains(text(),'"+valik+"')]")
         hidden = self.get_element(By.XPATH, "//a[contains(text(),'"+valik+"')]", "Menüülement " + valik)
 
         actions = ActionChains(self.driver)
@@ -403,17 +368,17 @@ class ehlMain:
         actions.perform()
         return 1
             
-        #except Exception as e:
-        #    print(f"Rippmenüü navigeerimisel tekkis probleem: {e}")
 
     def ava_kiirabi_kaart(self):
         self.ava_menyy_alajaotis("Päevik")
-        self.driver.find_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']").click()
-        self.driver.find_element(By.XPATH, "//a[@arn-evntid='showAll']").click()
+        element = self.get_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']", "Kõik päevad", clickable=True)
+        element.click()
+        element = self.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki", clickable=True)
+        element.click()
         sleep(1)
 
         #Kas kiirabi kaart on olemas
-        if not self.driver.find_elements(By.XPATH, "//td[contains(text(),'Kiirabikaart nr.')]"):
+        if not self.get_element(By.XPATH, "//td[contains(text(),'Kiirabikaart nr.')]", "Kiirabikaardi sissekanne", check=True):
             self.kiirabikaart_tekst=""
             self.tootle_kiirabikaart()
             return
@@ -519,34 +484,38 @@ class ehlMain:
                 break
         #Ei toimi, mingid tühikud rikuvad ära
         #anamneesi_algus = toorandmed.index("Anamnees")
-        anamneesi_lopp = toorandmed.index("Patsiendi objektiivne staatus")
-        self.kiirabi_anamnees = " ".join(toorandmed[anamneesi_algus:anamneesi_lopp])
+##        anamneesi_lopp = toorandmed.index("Patsiendi objektiivne staatus")
+##        self.kiirabi_anamnees = " ".join(toorandmed[anamneesi_algus:anamneesi_lopp])
 
         return
 
     def ava_emo_triaaz(self):
         try:
-            element_present = EC.presence_of_element_located((By.CLASS_NAME, "arrow"))
-            WebDriverWait(self.driver, self.page_load_delay).until(element_present)
+            self.get_element(By.CLASS_NAME, "arrow", "Nool")
         except TimeoutException:
             return #Põhjust ei olnud vaja sisestada
 
         #muuda kõik markide kohta
-        if self.driver.find_elements(By.XPATH, "//a[@class='ico-tip mark one']"):
+        if self.get_element(By.XPATH, "//a[@class='ico-tip mark one']", "Punane triaaž", check=True):
             self.emo_triaaz_varv = "1"
-            self.driver.find_element(By.XPATH, "//a[@class='ico-tip mark one']").click()
-        elif self.driver.find_elements(By.XPATH, "//a[@class='ico-tip mark two']"):
+            element = self.get_element(By.XPATH, "//a[@class='ico-tip mark one']", "Punane triaaž", clickable=True)
+            element.click()
+        elif self.get_element(By.XPATH, "//a[@class='ico-tip mark two']", "Oranž triaaž", check=True):
             self.emo_triaaz_varv = "2"
-            self.driver.find_element(By.XPATH, "//a[@class='ico-tip mark two']").click()
-        elif self.driver.find_elements(By.XPATH, "//a[@class='ico-tip mark three']"):
+            element = self.get_element(By.XPATH, "//a[@class='ico-tip mark two']", "Oranž triaaž", clickable=True)
+            element.click()
+        elif self.get_element(By.XPATH, "//a[@class='ico-tip mark three']", "Kollane triaaž", check=True):
             self.emo_triaaz_varv = "3"
-            self.driver.find_element(By.XPATH, "//a[@class='ico-tip mark three']").click()
-        elif self.driver.find_elements(By.XPATH, "//a[@class='ico-tip mark four']"):
+            element = self.get_element(By.XPATH, "//a[@class='ico-tip mark three']", "Kollane triaaž", clickable=True)
+            element.click()
+        elif self.get_element(By.XPATH, "//a[@class='ico-tip mark four']", "Roheline triaaž", check=True):
             self.emo_triaaz_varv = "4"
-            self.driver.find_element(By.XPATH, "//a[@class='ico-tip mark four']").click()
-        elif self.driver.find_elements(By.XPATH, "//a[@class='ico-tip mark five']"):
+            element = self.get_element(By.XPATH, "//a[@class='ico-tip mark four']", "Roheline triaaž", clickable=True)
+            element.click()
+        elif self.get_element(By.XPATH, "//a[@class='ico-tip mark five']", "Sinine triaaž", check=True):
             self.emo_triaaz_varv = "5"
-            self.driver.find_element(By.XPATH, "//a[@class='ico-tip mark five']").click()
+            element = self.get_element(By.XPATH, "//a[@class='ico-tip mark five']", "Sinine triaaž", clickable=True)
+            element.click()
         else:
             return
         #self.driver.find_element(By.XPATH, "//a[@class='ico-tip mark three']").click()
@@ -661,19 +630,19 @@ class ehlMain:
         self.ava_menyy_alajaotis("Digiloo päringud")
         try:
             # Esmalt avame õige iframe'i
-            element = WebDriverWait(self.driver, self.page_load_delay).until(EC.presence_of_element_located((By.ID, "angularIframe")))
+            element = self.get_element(By.ID, "angularIframe", "Iframe")
             self.driver.switch_to.frame(element)
             # Siis otsime diagnooside radio inputi
-            element = WebDriverWait(self.driver, self.page_load_delay).until(EC.presence_of_element_located((By.NAME, "51")))
+            element = self.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[2]/hc-navbar-filter/div/div/div[3]/div/span/form/div[1]/div[2]/div/div[2]/label/input", "Radio input")
             element.click()
-            # Suus valime filtri alguskuupäeva inputi ja täidame selle
-            element = self.driver.find_element(By.XPATH, "/html/body/ui-view/div[2]/div[2]/hc-navbar-filter/div/div/div[3]/div/span/form/div[1]/div[4]/div/hc-date-picker[1]/div/input")
+            # Siis valime filtri alguskuupäeva inputi ja täidame selle
+            element = self.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[2]/hc-navbar-filter/div/div/div[3]/div/span/form/div[1]/div[4]/div/hc-date-picker[1]/div/input", "Alguskuupäeva input")
             element.clear()
             element.send_keys(Keys.HOME)
             element.send_keys(startdate)
             element.send_keys(Keys.ENTER)
             # Ja lõpuks vajutame otsimisnuppu
-            element = self.driver.find_element(By.XPATH, "/html/body/ui-view/div[2]/div[2]/hc-navbar-filter/div/div/div[3]/div/span/form/div[2]/div/button")
+            element = self.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[2]/hc-navbar-filter/div/div/div[3]/div/span/form/div[2]/div/button", "Otsi nupp", clickable=True)
             element.click()
         except TimeoutException:
             return 0

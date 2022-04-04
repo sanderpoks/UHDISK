@@ -182,7 +182,7 @@ def main_window(record_manager):
     window = MainWindow(root, record_manager)
     root.mainloop()
 
-def login_window():
+def login_window(APP_TITLE):
     root = tk.Tk()
     root.title(APP_TITLE)
     window = LoginWindow(root)
@@ -271,19 +271,20 @@ class RecordManager():
             return(record)
         
 
-# Main program flow
-VERSION = get_version()
-APP_TITLE = f"ehl_helper - {VERSION}"
+if __name__ == "__main__":
+    # Main program flow
+    VERSION = get_version()
+    APP_TITLE = f"ehl_helper - {VERSION}"
 
-project = redcap_connect()  # Kui API key on juba faili salvestatud ja töötab, siis seostab RedCapi projektiga. 
-while project is None:
-    redcap_create_api_key()  # Kui aga API keyga on mingi probleem, siis laseb kasutajal selle sisestada
-    project = redcap_connect()  # Ja seejärel seostab RedCapi projektiga
+    project = redcap_connect()  # Kui API key on juba faili salvestatud ja töötab, siis seostab RedCapi projektiga. 
+    while project is None:
+        redcap_create_api_key()  # Kui aga API keyga on mingi probleem, siis laseb kasutajal selle sisestada
+        project = redcap_connect()  # Ja seejärel seostab RedCapi projektiga
 
-record_manager = RecordManager(project)
-ehl = ehlNavigeerimine.ehlMain()
-ehl.ava()
-login_window() # Loob akna, mille kaudu märku anda, kui eHLi on sisse logitud.
-main_window(record_manager) # Avab navigeerimispaneeli
+    record_manager = RecordManager(project)
+    ehl = ehlNavigeerimine.ehlMain()
+    ehl.ava()
+    login_window(APP_TITLE) # Loob akna, mille kaudu märku anda, kui eHLi on sisse logitud.
+    main_window(record_manager) # Avab navigeerimispaneeli
 
     
