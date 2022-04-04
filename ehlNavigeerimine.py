@@ -132,7 +132,12 @@ class ehlMain:
             print(f"Fail {HIGHLIGHTS_FILE} ei eksisteeri.")
 
     def get_element(self, by, expression, name, clickable=False, check=False):
-        """ See funktsioon abstrahheerib seleniumis elemendi leidmise ning võtab arvesse laadimisaega ja blokeerivaid elemente"""
+        """ See funktsioon abstrahheerib seleniumis elemendi leidmise ning võtab arvesse laadimisaega ja blokeerivaid elemente
+        Argumendid:
+        clickable - kontrollib lisaks ka seda, et element oleks klikitav
+        check - ei oota timeouti ära vaid kontrollib kiirelt, kas element olemas, ja kui ei ole, siis returnib None
+
+        """
         if check == True:
             print(f"get_element: Kontrollin, kas element {name} eksisteerib")
         else:
@@ -268,15 +273,11 @@ class ehlMain:
             
             element = self.get_element(By.XPATH, "//a[contains(text(),'Registrid')]", 'Konto "Registrid"', clickable=True)
             element.click()
-            
-            #Oota, kuni laeb ära:
-            try:
-                self.get_element(By.XPATH, "//div[@id='nav']",'Tab "Registrid"')
-            except TimeoutException:
-                return
+
 
         #Muudame arvelduse menüü nähtavaks
-        self.driver.find_element(By.XPATH, "//div[@id='nav']").find_element(By.ID, "nav01").find_element(By.TAG_NAME,"a").click()
+        element = self.get_element(By.XPATH, '//*[@id="nav01"]/a/strong', 'Tab "Registrid"', clickable=True)
+        element.click()
         try:
             self.get_element(By.LINK_TEXT, "Patsiendid", 'Menüüvalik "Patsiendid"')
         except TimeoutException:
