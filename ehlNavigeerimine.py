@@ -17,11 +17,11 @@ HIGHLIGHTS_FILE = "./highlights"
 
 
 class ehlMain:
-    script_load_delay=5
-    page_load_delay=20
-    PATH=""
+    
 
     def __init__(self):
+        self.script_load_delay=5
+        self.page_load_delay=20
         self.pt_isikukood = ""
         self.pt_hjnumber = ""
         self.record_id = ""
@@ -131,13 +131,14 @@ class ehlMain:
         except IOError:
             print(f"Fail {HIGHLIGHTS_FILE} ei eksisteeri.")
 
-    def get_element(self, by, expression, name, clickable=False, check=False):
+    def get_element(self, by, expression, name, clickable=False, check=False, timeout=20):
         """ See funktsioon abstrahheerib seleniumis elemendi leidmise ning võtab arvesse laadimisaega ja blokeerivaid elemente
         Argumendid:
         clickable - kontrollib lisaks ka seda, et element oleks klikitav
         check - ei oota timeouti ära vaid kontrollib kiirelt, kas element olemas, ja kui ei ole, siis returnib None
 
         """
+        timeout = timeout
         if check == True:
             print(f"get_element: Kontrollin, kas element {name} eksisteerib")
         else:
@@ -153,10 +154,10 @@ class ehlMain:
         try:
             if clickable == False:
                 element_present = EC.presence_of_element_located((by, expression))
-                element = WebDriverWait(self.driver, self.page_load_delay).until(element_present)
+                element = WebDriverWait(self.driver, timeout).until(element_present)
             elif clickable == True:
                 element_clickable = EC.element_to_be_clickable((by, expression))
-                element = WebDriverWait(self.driver, self.page_load_delay).until(element_clickable)
+                element = WebDriverWait(self.driver, timeout).until(element_clickable)
             return element
         except TimeoutException:
             print(f"Timeout: Elementi {name} ei jõutud ära oodata")
@@ -174,7 +175,8 @@ class ehlMain:
             "triaaz": self.ava_emo_triaaz,
             "diagnoosid" : self.ava_diagnoosid,
             "digilugu_diagnoosid" : self.ava_diagnoosid_digilugu,
-            "haiguslugu" : self.haiguslugude_otsimine
+            "haiguslugu" : self.haiguslugude_otsimine,
+            "logi_sisse" : self.logi_sisse
             }
 
         
@@ -227,6 +229,17 @@ class ehlMain:
 ##                #new_text="AAA"
 ##                #print("arguments[0].innerText = "+new_text)
 ##                self.driver.execute_script("arguments[0].innerHTML = \'"+new_text+"\'", elements[i])
+
+    def logi_sisse(self, isikukood, telefoninumber):
+        element = self.get_element(By.XPATH, "/html/body/div/div/div[2]/button[3]", "Mobiil-ID nupp", clickable=True)
+        element.click()
+        element = self.get_element(By.ID, "username", "Isikukoodi väli")
+        element.send_keys(isikukood)
+        element = self.get_element(By.ID, "phone-number", "Telefoninumbri väli")
+        element.send_keys(telefoninumber)
+        element.send_keys(Keys.RETURN)
+        element = self.get_element(By.ID, "1000132510", "Registrid konto", clickable=True, timeout=60)
+        element.click()
 
     #mitte registrid
     def haiguslugude_otsimine_EMO_konto(self, hj_number):
