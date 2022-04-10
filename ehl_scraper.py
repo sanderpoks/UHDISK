@@ -5,19 +5,41 @@ from pyfields import field
 from ehlNavigeerimine import ehlMain
 from time import sleep
 
+class Scraper:
+    """
+    Scraper koondab endas kõik funktsioonid, mis scrapevad eHList tunnuste kohta infot.
+    Funktsioonid saavad scrapetud andmed otse uuritava atribuutidesse salvestada.
+    """
 
+    def scrape_kiirabi_kaart(self, uuritav):
+        # Martin
+        pass
+    
+    def scrape_triaaz(self, uuritav):
+        # Martin
+        pass
+
+    def scrape_varasemad_diagnoosid(self, uuritav):
+        ehl.navigeeri("digilugu_diagnoosid")
+
+    def scrape_hj_diagnoosid(self, uuritav):
+        # Martin
+        pass
+
+    def scrape_hospitaliseerimise_info(self, uuritav):
+        # Martin
+        pass 
+    
 
 class Uuritav:
 
     def __init__(self, rc_id):
-        self.parameter_list = ["red_trauma", "ph", "ph_resp_qual", "ph_resp_quan", "ph_spo2", "ph_sys", "ph_dia", "ph_hr", "ph_temp",
-                               "emo_triage", "emo_triage_nurse", "emo_resp_qual", "emo_resp_quan", "emo_spo2", "emo_sys", "emo_dia", "emo_hr", "emo_temp",
-                               "kok_astma", "sydamepuudulikkus", "diagnoses", "hospitalised", "hospitalised_duration", "icu", "icu_duration", "hospitalised_death"]
-
         # Initialize attributes
         self.rc_id = rc_id
         self.nav_id : int = field(doc="Uuritava isikukood")
         self.nav_hj : str = field(doc="Uuritava haigusjuhu number")
+
+        self.scraper = Scraper()
 
         self.red_trauma = None
         self.ph = None
@@ -45,19 +67,20 @@ class Uuritav:
         self.icu = None
         self.icu_duration = None
         self.hospitalised_death = None
-        
 
         # Start scraping
         self.fill_nav_data()
+        self.scrape_data()
         self.print()
-        
+
+    def scrape_data(self):
         self.ehl_navigate()
         
-        self.scrape_kiirabi_kaart()
-        self.scrape_triaaz()
-        self.scrape_varasemad_diagnoosid()
-        self.scrape_hj_diagnoosid()
-        self.scrape_hospitaliseerimise_info()
+        self.scraper.scrape_kiirabi_kaart(self)
+        self.scraper.scrape_triaaz(self)
+        self.scraper.scrape_varasemad_diagnoosid(self)
+        self.scraper.scrape_hj_diagnoosid(self)
+        self.scraper.scrape_hospitaliseerimise_info(self)
         
 
     def print(self):
@@ -67,8 +90,7 @@ class Uuritav:
 
 
     def fill_nav_data(self):
-        """ Tõmbab redcapist alla uuritava isikukoodi ja HJ info ja seob selle instantsiga
-            self.nav_id ja self.nav_hj"""
+        """ Tõmbab redcapist alla uuritava isikukoodi ja HJ info ja paneb selle instantsi atribuutidesse """
         project = redcap_connect()
         if project == None:
             print("RedCap andmebaasiga ühendumine ebaõnnestus")
@@ -78,27 +100,9 @@ class Uuritav:
         self.nav_hj = record["ref_num"]
 
     def ehl_navigate(self):
-        ehl.haiguslugude_otsimine(self.nav_id, self.nav_hj)
+        ehl.navigeeri("haiguslugu", self.nav_id, self.nav_hj)
 
-    def scrape_kiirabi_kaart(self):
-        # M
-        pass
     
-    def scrape_triaaz(self):
-        # M
-        pass
-
-    def scrape_varasemad_diagnoosid(self):
-        # M
-        pass
-
-    def scrape_hj_diagnoosid(self):
-        # SANDER
-        pass
-
-    def scrape_hospitaliseerimise_info(self):
-        # M
-        pass
 
 def get_redcap_id_list():
     return [2550]

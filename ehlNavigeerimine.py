@@ -163,22 +163,26 @@ class ehlMain:
             raise
 
 
-    def navigeeri(self, element):
+    def navigeeri(self, element:str, *args):
         counter = 0
         timeout = 3
+
+        # Siia dictionarisse koondatud kokku võimalikud kohad, kuhu eHLis navigeerida ja funktsioonid, mis seda teostavad
+        navigate_functions = {
+            "kiirabi" : self.ava_kiirabi_kaart,
+            "paevik" : self.ava_paeviku_algus,
+            "triaaz": self.ava_emo_triaaz,
+            "diagnoosid" : self.ava_diagnoosid,
+            "digilugu_diagnoosid" : self.ava_diagnoosid_digilugu,
+            "haiguslugu" : self.haiguslugude_otsimine
+            }
+
+        
         while counter < 5:
             try:
                 print(f"Funktsion NAVIGEERI parameetriga {element}")
-                if element == "kiirabi":
-                    self.ava_kiirabi_kaart()                    
-                elif element == "paevik":
-                    self.ava_paeviku_algus()
-                elif element == "triaaz":
-                    self.ava_emo_triaaz()
-                elif element == "diagnoosid":
-                    self.ava_diagnoosid()
-                elif element == "digilugu_diagnoosid":
-                    self.ava_diagnoosid_digilugu()
+                if element in navigate_functions:
+                    navigate_functions[element](*args)
                 else:
                     self.ava_menyy_alajaotis(element)
             except ElementNotInteractableException:

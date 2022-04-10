@@ -98,7 +98,7 @@ class MainWindow:
         self.master = master
         self.record_manager = record_manager
         self.active_record = self.record_manager.current()
-        ehl.haiguslugude_otsimine(self.active_record.isikukood, self.active_record.hj_number)
+
 
         BUTTONWIDTH = 5
         
@@ -138,6 +138,9 @@ class MainWindow:
         ehl_diagn_nupp.grid(row=1,column=1)
         digilugu_diagn_nupp.grid(row=1, column=2)
 
+        ehl.navigeeri("haiguslugu", self.active_record.isikukood, self.active_record.hj_number)
+
+
     def refresh_labels(self):
         self.isikukood.set("Isikukood: " + str(self.active_record.isikukood))
         self.hj_number.set("Haigusjuhu number: " + str(self.active_record.hj_number))
@@ -145,18 +148,18 @@ class MainWindow:
 
     def next(self):
         self.active_record = self.record_manager.next()
-        ehl.haiguslugude_otsimine(self.active_record.isikukood, self.active_record.hj_number)
         self.refresh_labels()
+        ehl.navigeeri("haiguslugu", self.active_record.isikukood, self.active_record.hj_number)
 
     def previous(self):
         self.active_record = self.record_manager.previous()
-        ehl.haiguslugude_otsimine(self.active_record.isikukood, self.active_record.hj_number)
         self.refresh_labels()
+        ehl.navigeeri("haiguslugu",self.active_record.isikukood, self.active_record.hj_number)
 
     def navigate_to(self, record_id):
         self.record_manager = RecordManager(None) # Loome uue navigeerimisindeksi, mis ei piira navigeerimist ainult meie DAGidele
         self.active_record = self.record_manager.goto_record(record_id)
-        ehl.haiguslugude_otsimine(self.active_record.isikukood, self.active_record.hj_number)
+        ehl.navigeeri("haiguslugu", self.active_record.isikukood, self.active_record.hj_number)
         self.refresh_labels()
 
     def edit_case(self, event):
