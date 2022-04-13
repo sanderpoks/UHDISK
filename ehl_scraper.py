@@ -209,7 +209,7 @@ class Scraper:
         anamneesi_lopp = toorandmed.index("Patsiendi objektiivne staatus")
         self.kiirabi_anamnees = " ".join(toorandmed[anamneesi_algus:anamneesi_lopp])
 
-        return
+        return kiirabiAndmed
     
     def scrape_triaaz(self, emo_data: EmoData) -> EmoData:
         # Martin
