@@ -8,6 +8,7 @@ from enum import Enum, auto
 from typing import List, Iterable
 from selenium.webdriver.common.by import By
 from login_data import UURIJA_ISIKUKOOD, UURIJA_TELEFON
+from selenium.webdriver.common.action_chains import ActionChains
 
 class triaaz(Enum):
     PUNANE = auto()
@@ -48,6 +49,7 @@ class Record:
 
 @dataclass
 class PhData:
+    #Kiirabikaart olemas v mitte
     resp_qual : Enum = field(init=False)
     resp_quan : int = field(init=False)
     spo2 : int = field(init=False)
@@ -102,8 +104,112 @@ class Scraper:
         self.driver = ehl.driver
 
     def scrape_kiirabi_kaart(self, ph_data: PhData) -> PhData:
-        # Martin
-        pass
+        kiirabiAndmed = PhData()
+        ehl.ava_menyy_alajaotis("Päevik")
+        self.driver.find_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']").click()
+        self.driver.find_element(By.XPATH, "//a[@arn-evntid='showAll']").click()
+        #Siin võiks mingi parem lahendus olla
+        sleep(1)
+
+        # Kas kiirabi kaart on olemas
+        if not self.driver.find_elements(By.XPATH, "//td[contains(text(),'Kiirabikaart nr.')]"):
+            #Siin märgi, et kiirabi kaarti ei leitud ehk tagasta vastav class
+            return
+
+        kiirabikaart = self.driver.find_element(By.XPATH, "//td[contains(text(),'Kiirabikaart nr.')]").find_element(By.TAG_NAME, "a")
+        actions = ActionChains(self.driver)
+        # Scrollime lehel otsitava elemendini
+        actions.move_to_element(kiirabikaart).click().perform()
+        sleep(2.5)
+
+        # Kõik avatud aknad:
+        handles = self.driver.window_handles
+
+        # Salvestan põhiakna
+        parent_handle = self.driver.current_window_handle
+        kiirabikaart_tekst = ""
+        for i in range(len(handles)):
+            if handles[i] != parent_handle:
+                self.driver.switch_to.window(handles[i])
+                kiirabikaart_tekst = self.driver.find_element(By.ID, "mainTable").text
+                # Sulgen kõrval akna
+                self.driver.close()
+                break
+        # Taastan algse akna
+        self.driver.switch_to.window(parent_handle)
+
+        #Scrapime kiirabi kaardi
+        toorandmed = kiirabikaart_tekst.splitlines()
+        if not toorandmed:
+            #Tagastan tühja klassi, None tagastada ei lase - pean seda veel uurima.
+            return PhData()
+
+        for i in toorandmed:
+            # Kvalitatiivne hingamissagedus
+            if "Hingamissageduse tase" in i and self.kiirabi[9] == "" and len(i.split(" ")) == 3:
+                #Siin kindlasti parem viis kui järjest mingeid if-e panna.
+                splitvalue = i.split(" ")[2]
+                if splitvalue == "hüperventilatsioon":
+                    kiirabiAndmed.resp_quan = "4" #Siin pean kõik järjest classi muutujatega asendama.
+                if splitvalue == "hüpoventilatsioon":
+                    self.kiirabi[9] = "2"
+                if splitvalue == "normoventilatsioon":
+                    self.kiirabi[9] = "3"
+
+            # Kvantitatiivne hingamissagedus
+            if "Hingamissagedus" in i and "korda/min" in i and self.kiirabi[11] == "" and len(i.split(" ")) == 3:
+                self.kiirabi[11] = i.split(" ")[1]
+                self.kiirabi[10] = "0"
+            elif self.kiirabi[10] == "":
+                self.kiirabi[10] = "1"
+
+            # SpO2
+            if "SpO2" in i and self.kiirabi[13] == "" and len(i.split(" ")) == 3:
+                self.kiirabi[13] = i.split(" ")[1]
+                self.kiirabi[12] = "0"
+            elif self.kiirabi[12] == "":
+                self.kiirabi[12] = "1"
+
+            # Süstoolne vererõhk
+            if "süstoolne" in i and self.kiirabi[15] == "" and len(i.split(" ")) == 4:
+                self.kiirabi[15] = i.split(" ")[2]
+                self.kiirabi[14] = "0"
+            elif self.kiirabi[14] == "":
+                self.kiirabi[14] = "1"
+
+            # Diastoolne vererõhk
+            if "diastoolne" in i and self.kiirabi[17] == "" and len(i.split(" ")) == 4:
+                self.kiirabi[17] = i.split(" ")[2]
+                self.kiirabi[16] = "0"
+            elif self.kiirabi[16] == "":
+                self.kiirabi[16] = "1"
+
+            # Südame löögisagedus
+            if "Pulsisagedus" in i and self.kiirabi[19] == "" and len(i.split(" ")) == 3:
+                self.kiirabi[19] = i.split(" ")[1]
+                self.kiirabi[18] = "0"
+            elif self.kiirabi[18] == "":
+                self.kiirabi[18] = "1"
+
+            # Temperatuur
+            if "Temperatuur" in i and self.kiirabi[21] == "" and len(i.split(" ")) == 4:
+                self.kiirabi[21] = i.split(" ")[2]
+                self.kiirabi[20] = "0"
+            elif self.kiirabi[20] == "":
+                self.kiirabi[20] = "1"
+
+        anamneesi_algus = 0
+        # Lisame ka anamneesi (ÄRA SEDA REDCAPi SAADA)
+        for i in range(len(toorandmed)):
+            if toorandmed[i].find("Anamnees") != -1:
+                anamneesi_algus = i
+                break
+        # Ei toimi, mingid tühikud rikuvad ära
+        # anamneesi_algus = toorandmed.index("Anamnees")
+        anamneesi_lopp = toorandmed.index("Patsiendi objektiivne staatus")
+        self.kiirabi_anamnees = " ".join(toorandmed[anamneesi_algus:anamneesi_lopp])
+
+        return
     
     def scrape_triaaz(self, emo_data: EmoData) -> EmoData:
         # Martin
