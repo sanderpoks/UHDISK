@@ -142,73 +142,47 @@ class Scraper:
         toorandmed = kiirabikaart_tekst.splitlines()
         if not toorandmed:
             #Tagastan tühja klassi, None tagastada ei lase - pean seda veel uurima.
-            return PhData()
+            return kiirabiAndmed()
 
         for i in toorandmed:
             # Kvalitatiivne hingamissagedus
-            if "Hingamissageduse tase" in i and self.kiirabi[9] == "" and len(i.split(" ")) == 3:
+            if "Hingamissageduse tase" in i and len(i.split(" ")) == 3:
                 #Siin kindlasti parem viis kui järjest mingeid if-e panna.
                 splitvalue = i.split(" ")[2]
                 if splitvalue == "hüperventilatsioon":
-                    kiirabiAndmed.resp_quan = "4" #Siin pean kõik järjest classi muutujatega asendama.
+                    kiirabiAndmed.resp_qual = "4" #Siin pean kõik järjest classi muutujatega asendama.
                 if splitvalue == "hüpoventilatsioon":
-                    self.kiirabi[9] = "2"
+                    kiirabiAndmed.resp_qual = "2"
                 if splitvalue == "normoventilatsioon":
-                    self.kiirabi[9] = "3"
+                    kiirabiAndmed.resp_qual = "3"
 
             # Kvantitatiivne hingamissagedus
-            if "Hingamissagedus" in i and "korda/min" in i and self.kiirabi[11] == "" and len(i.split(" ")) == 3:
-                self.kiirabi[11] = i.split(" ")[1]
-                self.kiirabi[10] = "0"
-            elif self.kiirabi[10] == "":
-                self.kiirabi[10] = "1"
+            if "Hingamissagedus" in i and "korda/min" in i  and len(i.split(" ")) == 3:
+                kiirabiAndmed.resp_quan = i.split(" ")[1]
+            #elif self.kiirabi[10] == "":
+            #    self.kiirabi[10] = "1"
 
             # SpO2
-            if "SpO2" in i and self.kiirabi[13] == "" and len(i.split(" ")) == 3:
-                self.kiirabi[13] = i.split(" ")[1]
-                self.kiirabi[12] = "0"
-            elif self.kiirabi[12] == "":
-                self.kiirabi[12] = "1"
+            if "SpO2" in i and len(i.split(" ")) == 3:
+                kiirabiAndmed.spo2 = i.split(" ")[1]
 
             # Süstoolne vererõhk
-            if "süstoolne" in i and self.kiirabi[15] == "" and len(i.split(" ")) == 4:
-                self.kiirabi[15] = i.split(" ")[2]
-                self.kiirabi[14] = "0"
-            elif self.kiirabi[14] == "":
-                self.kiirabi[14] = "1"
+            if "süstoolne" in i and len(i.split(" ")) == 4:
+                kiirabiAndmed.sys = i.split(" ")[2]
 
             # Diastoolne vererõhk
-            if "diastoolne" in i and self.kiirabi[17] == "" and len(i.split(" ")) == 4:
-                self.kiirabi[17] = i.split(" ")[2]
-                self.kiirabi[16] = "0"
-            elif self.kiirabi[16] == "":
-                self.kiirabi[16] = "1"
+            if "diastoolne" in i and len(i.split(" ")) == 4:
+                kiirabiAndmed.dia = i.split(" ")[2]
 
             # Südame löögisagedus
-            if "Pulsisagedus" in i and self.kiirabi[19] == "" and len(i.split(" ")) == 3:
-                self.kiirabi[19] = i.split(" ")[1]
-                self.kiirabi[18] = "0"
-            elif self.kiirabi[18] == "":
-                self.kiirabi[18] = "1"
+            if "Pulsisagedus" in i and len(i.split(" ")) == 3:
+                kiirabiAndmed.hr = i.split(" ")[1]
 
             # Temperatuur
-            if "Temperatuur" in i and self.kiirabi[21] == "" and len(i.split(" ")) == 4:
-                self.kiirabi[21] = i.split(" ")[2]
-                self.kiirabi[20] = "0"
-            elif self.kiirabi[20] == "":
-                self.kiirabi[20] = "1"
+            if "Temperatuur" in i and len(i.split(" ")) == 4:
+                kiirabiAndmed.temp = i.split(" ")[2]
 
-        anamneesi_algus = 0
-        # Lisame ka anamneesi (ÄRA SEDA REDCAPi SAADA)
-        for i in range(len(toorandmed)):
-            if toorandmed[i].find("Anamnees") != -1:
-                anamneesi_algus = i
-                break
-        # Ei toimi, mingid tühikud rikuvad ära
-        # anamneesi_algus = toorandmed.index("Anamnees")
-        anamneesi_lopp = toorandmed.index("Patsiendi objektiivne staatus")
-        self.kiirabi_anamnees = " ".join(toorandmed[anamneesi_algus:anamneesi_lopp])
-
+        print(kiirabiAndmed)
         return kiirabiAndmed
     
     def scrape_triaaz(self, emo_data: EmoData) -> EmoData:
