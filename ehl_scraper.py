@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-from ehl_assistant import RecordManager, REDCAP_KEY_FILENAME, redcap_connect, redcap_retrieve_remote, login_window
+from ehl_assistant import RecordManager, REDCAP_KEY_FILENAME, initiate_redcap, redcap_retrieve_remote, login_window
 from redcap import Project, RedcapError
 from ehlNavigeerimine import ehlMain
 from time import sleep
@@ -8,6 +8,8 @@ from enum import Enum, auto
 from typing import List, Iterable
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
+
+APP_TITLE = "eHL Scraper"
 
 class triaaz(Enum):
     PUNANE = auto()
@@ -33,7 +35,7 @@ class Record:
 
     def fill_nav_data(self):
         """ Tõmbab redcapist alla uuritava isikukoodi ja HJ info ja paneb selle instantsi atribuutidesse """
-        project = redcap_connect()
+        project = initiate_redcap()
         if project == None:
             print("RedCap andmebaasiga ühendumine ebaõnnestus")
             raise RedcapError

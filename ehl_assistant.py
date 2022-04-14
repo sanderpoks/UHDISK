@@ -10,6 +10,7 @@ os.chdir(os.path.dirname(sys.argv[0]))
 
 REDCAP_KEY_FILENAME = "redcap_api_key"
 VERSION_FILENAME = "./version"
+APP_TITLE = "ehL Helper"
 
 class TkErrorCatcher:
 
@@ -273,16 +274,20 @@ class RecordManager():
             self.records.append(record)
             return(record)
         
+def initiate_redcap():
+    project = redcap_connect()  # Kui API key on juba faili salvestatud ja töötab, siis seostab RedCapi projektiga. 
+    while project is None:
+        redcap_create_api_key()  # Kui aga API keyga on mingi probleem, siis laseb kasutajal selle sisestada
+        project = redcap_connect()  # Ja seejärel seostab RedCapi projektiga
+    return project
+
 
 if __name__ == "__main__":
     # Main program flow
     VERSION = get_version()
     APP_TITLE = f"ehl_helper - {VERSION}"
 
-    project = redcap_connect()  # Kui API key on juba faili salvestatud ja töötab, siis seostab RedCapi projektiga. 
-    while project is None:
-        redcap_create_api_key()  # Kui aga API keyga on mingi probleem, siis laseb kasutajal selle sisestada
-        project = redcap_connect()  # Ja seejärel seostab RedCapi projektiga
+    project = initiate_redcap()
 
     record_manager = RecordManager(project)
     ehl = ehlNavigeerimine.ehlMain()
