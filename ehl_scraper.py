@@ -193,8 +193,8 @@ class Scraper:
         ehl.navigeeri("digilugu_diagnoosid")
         element = ehl.get_element(By.ID, "angularIframe", "Iframe")
         self.driver.switch_to.frame(element)
-        element = ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[2]/div/div/table/thead/tr[1]/th/a", "Kõik kirjed", clickable=True)
-        element.click
+#        element = ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[2]/div/div/table/thead/tr[1]/th/a", "Kõik kirjed", clickable=True)
+#        element.click
         # See veel ei tööta, jätkan järgmine kord siit
 
     def scrape_hj_diagnoosid(self, diagnoosid_data: DiagnosisData) -> DiagnosisData:
