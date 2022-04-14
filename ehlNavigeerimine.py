@@ -12,6 +12,7 @@ import datetime
 import csv
 from redcap import Project, RedcapError
 import platform
+from login_data import UURIJA_ISIKUKOOD, UURIJA_TELEFON, SISSELOGIMISE_VIIS
 
 HIGHLIGHTS_FILE = "./highlights"
 
@@ -230,13 +231,17 @@ class ehlMain:
 ##                #print("arguments[0].innerText = "+new_text)
 ##                self.driver.execute_script("arguments[0].innerHTML = \'"+new_text+"\'", elements[i])
 
-    def logi_sisse(self, isikukood, telefoninumber):
-        element = self.get_element(By.XPATH, "/html/body/div/div/div[2]/button[3]", "Mobiil-ID nupp", clickable=True)
+    def logi_sisse(self):
+        if SISSELOGIMISE_VIIS == 0: # Mobiil-ID
+            element = self.get_element(By.XPATH, "/html/body/div/div/div[2]/button[3]", "Mobiil-ID nupp", clickable=True)
+        elif SISSELOGIMISE_VIIS == 1: # Smart-ID
+            element = self.get_element(By.XPATH, "/html/body/div/div/div[2]/button[2]", "Smart-ID nupp", clickable=True)
         element.click()
         element = self.get_element(By.ID, "username", "Isikukoodi väli")
-        element.send_keys(isikukood)
-        element = self.get_element(By.ID, "phone-number", "Telefoninumbri väli")
-        element.send_keys(telefoninumber)
+        element.send_keys(UURIJA_ISIKUKOOD)
+        if SISSELOGIMISE_VIIS == 0: # Mobiil-ID
+            element = self.get_element(By.ID, "phone-number", "Telefoninumbri väli")
+            element.send_keys(UURIJA_TELEFON)
         element.send_keys(Keys.RETURN)
         element = self.get_element(By.ID, "1000132510", "Registrid konto", clickable=True, timeout=60)
         element.click()

@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import List, Iterable
 from selenium.webdriver.common.by import By
-from login_data import UURIJA_ISIKUKOOD, UURIJA_TELEFON
 from selenium.webdriver.common.action_chains import ActionChains
 
 class triaaz(Enum):
@@ -232,7 +231,7 @@ class Uuritav:
         print(self.record)
 
     def log_in(self):
-        ehl.navigeeri("logi_sisse", UURIJA_ISIKUKOOD, UURIJA_TELEFON)
+        ehl.navigeeri("logi_sisse")
 
     def ehl_navigate(self) -> None:
         ehl.navigeeri("haiguslugu", self.record.isikukood, self.record.hj_number)
