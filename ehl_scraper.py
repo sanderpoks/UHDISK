@@ -43,10 +43,11 @@ class Record:
         self.isikukood = record["id_code"]
         self.hj_number = record["ref_num"]
 
-    def __repr__(self):
-        return (f"RedCap ID:\t{self.rc_id}\n"
+    def __str__(self):
+        return ("### NAV INFO ###\n"
+                f"RedCap ID:\t{self.rc_id}\n"
                 f"Isikukood:\t{self.isikukood}\n"
-                f"Haigusjuht:\t{self.hj_number}")
+                f"Haigusjuht:\t{self.hj_number}\n")
 
 @dataclass
 class PhData:
@@ -59,23 +60,51 @@ class PhData:
     hr : int = field(init=False)
     temp : float = field(init=False)
 
+    def __str__(self):
+        return "\n".join(("### Kiirabikaart ###",
+        f"Kval RR:\t{str(self.resp_qual)}",
+        f"Kvan RR:\t{str(self.resp_quan)}",
+        f"SpO2:\t\t{str(self.spo2)}",
+        f"Sys BP:\t\t{str(self.sys)}",
+        f"Dia BP:\t\t{str(self.dia)}",
+        f"HR:\t\t{str(self.hr)}",
+        f"Temp:\t\t{str(self.temp)}\n"))
+
 @dataclass
 class EmoData:
     red_trauma : bool = field(init=False)
-    emo_triage : Enum = field(init=False)
-    emo_triage_nurse : str = field(init=False)
-    emo_resp_qual : Enum = field(init=False)
-    emo_resp_quan : str = field(init=False)
-    emo_spo2 : int = field(init=False)
-    emo_sys : int = field(init=False)
-    emo_dia : int = field(init=False)
-    emo_hr : int = field(init=False)
-    emo_temp : float = field(init=False)
+    triage : Enum = field(init=False)
+    triage_nurse : str = field(init=False)
+    resp_qual : Enum = field(init=False)
+    resp_quan : str = field(init=False)
+    spo2 : int = field(init=False)
+    sys : int = field(init=False)
+    dia : int = field(init=False)
+    hr : int = field(init=False)
+    temp : float = field(init=False)
+
+    def __str__(self):
+        return "\n".join(("### EMO ###",
+        f"Punane trauma:\t{str(self.red_trauma)}",
+        f"Triaaž:\t{str(self.triage)}",
+        f"Triaažiõde:\t{str(self.triage_nurseTriaaž)}",
+        f"Kval RR:\t{str(self.resp_qual)}",
+        f"Kvan RR:\t{str(self.resp_quan)}",
+        f"SpO2:\t\t{str(self.spo2)}",
+        f"Sys BP:\t\t{str(self.sys)}",
+        f"Dia BP:\t\t{str(self.dia)}",
+        f"HR:\t\t{str(self.hr)}",
+        f"Temp:\t\t{str(self.temp)}\n"))
 
 @dataclass
 class PreviousDiagnosisData:
     kok_astma : bool = field(init=False)
     sydamepuudulikkus : bool = field(init=False)
+
+    def __str__(self):
+        return "\n".join(("### Varasemad diagnoosid ###",
+        f"KOK/Astma:\t{str(self.kok_astma)}",
+        f"Südamepuudulikkus:\t{str(self.sydamepuudulikkus)}"))
 
 @dataclass
 class HospitalisationData:
@@ -84,9 +113,19 @@ class HospitalisationData:
     icu_duration : int = field(init=False)
     hospitalised_death : bool = field(init=False)
 
+    def __str__(self):
+        return "\n".join(("### Haiglaravi ###",
+                "Haiglaravi kestus:\t{str(self.hospitalised_duration)}",
+                "Intensiivravi:\t{str(self.icu)}",
+                "Intensiivravi kestus:\t{str(self.icu_duration)}",
+                "Surm haiglas:\t{str(self.hospitalised_death)}"))
+
 @dataclass
 class DiagnosisData:
     diagnosis_list: List[str] = field(init=False)
+
+    def __str__(self):
+        return "\n".join("### Diagnoosid ###".extend(self.diagnosis_list))
 
 @dataclass
 class UuritavData:
@@ -95,6 +134,14 @@ class UuritavData:
     prev_diag : PreviousDiagnosisData = field(default_factory=PreviousDiagnosisData)
     hospitalisation : HospitalisationData = field(default_factory=HospitalisationData)
     diagnosis : DiagnosisData = field(default_factory=DiagnosisData)
+
+    def __str__(self):
+        ph_str = ""
+        if self.ph:
+            ph_str = self.ph
+        else:
+            ph_str =  "Kiirabikaart puudub"
+        return "\n".join((str(ph_str), str(self.emo), str(self.prev_diag), str(self.hospitalisation), str(self.diagnosis)))
 
 class Scraper:
     """
@@ -106,16 +153,18 @@ class Scraper:
 
     def scrape_kiirabi_kaart(self, ph_data: PhData) -> PhData:
         kiirabiAndmed = PhData()
-        ehl.ava_menyy_alajaotis("Päevik")
-        self.driver.find_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']").click()
-        self.driver.find_element(By.XPATH, "//a[@arn-evntid='showAll']").click()
+        ehl.navigeeri("Päevik")
+        element = ehl.get_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']", "Kõik päevad")
+        element.click()
+        element = ehl.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki")
+        element.click()
         #Siin võiks mingi parem lahendus olla
         sleep(1)
 
         # Kas kiirabi kaart on olemas
         if not self.driver.find_elements(By.XPATH, "//td[contains(text(),'Kiirabikaart nr.')]"):
             #Siin märgi, et kiirabi kaarti ei leitud ehk tagasta vastav class
-            return
+            return None
 
         kiirabikaart = self.driver.find_element(By.XPATH, "//td[contains(text(),'Kiirabikaart nr.')]").find_element(By.TAG_NAME, "a")
         actions = ActionChains(self.driver)
@@ -142,8 +191,7 @@ class Scraper:
         #Scrapime kiirabi kaardi
         toorandmed = kiirabikaart_tekst.splitlines()
         if not toorandmed:
-            #Tagastan tühja klassi, None tagastada ei lase - pean seda veel uurima.
-            return kiirabiAndmed()
+            return None
 
         for i in toorandmed:
             # Kvalitatiivne hingamissagedus
@@ -151,11 +199,11 @@ class Scraper:
                 #Siin kindlasti parem viis kui järjest mingeid if-e panna.
                 splitvalue = i.split(" ")[2]
                 if splitvalue == "hüperventilatsioon":
-                    kiirabiAndmed.resp_qual = "4" #Siin pean kõik järjest classi muutujatega asendama.
-                if splitvalue == "hüpoventilatsioon":
-                    kiirabiAndmed.resp_qual = "2"
-                if splitvalue == "normoventilatsioon":
-                    kiirabiAndmed.resp_qual = "3"
+                    kiirabiAndmed.resp_qual = hingamissagedus.HYPERVENTILATSIOON
+                elif splitvalue == "hüpoventilatsioon":
+                    kiirabiAndmed.resp_qual = hingamissagedus.HYPOVENTILATSIOON
+                elif splitvalue == "normoventilatsioon":
+                    kiirabiAndmed.resp_qual = hingamissagedus.NORMOVENTILATSIOON
 
             # Kvantitatiivne hingamissagedus
             if "Hingamissagedus" in i and "korda/min" in i  and len(i.split(" ")) == 3:
@@ -175,6 +223,7 @@ class Scraper:
             if "diastoolne" in i and len(i.split(" ")) == 4:
                 kiirabiAndmed.dia = i.split(" ")[2]
 
+
             # Südame löögisagedus
             if "Pulsisagedus" in i and len(i.split(" ")) == 3:
                 kiirabiAndmed.hr = i.split(" ")[1]
@@ -183,7 +232,6 @@ class Scraper:
             if "Temperatuur" in i and len(i.split(" ")) == 4:
                 kiirabiAndmed.temp = i.split(" ")[2]
 
-        print(kiirabiAndmed)
         return kiirabiAndmed
     
     def scrape_triaaz(self, emo_data: EmoData) -> EmoData:
@@ -222,15 +270,16 @@ class Uuritav:
         self.print()
 
     def scrape_data(self) -> None:
-        self.scraper.scrape_kiirabi_kaart(self.data.ph)
-        self.scraper.scrape_triaaz(self.data.emo)
-        self.scraper.scrape_varasemad_diagnoosid(self.data.prev_diag)
-        self.scraper.scrape_hj_diagnoosid(self.data.diagnosis)
-        self.scraper.scrape_hospitaliseerimise_info(self.data.hospitalisation)
+        self.data.ph = self.scraper.scrape_kiirabi_kaart(self.data.ph)
+        self.data.emo = self.scraper.scrape_triaaz(self.data.emo)
+        self. data.prev_diag = self.scraper.scrape_varasemad_diagnoosid(self.data.prev_diag)
+        self.data.diagnosis = self.scraper.scrape_hj_diagnoosid(self.data.diagnosis)
+        self.data.hospitalisation = self.scraper.scrape_hospitaliseerimise_info(self.data.hospitalisation)
         
 
     def print(self) -> None:
         print(self.record)
+        print(self.data)
 
     def log_in(self):
         ehl.navigeeri("logi_sisse")

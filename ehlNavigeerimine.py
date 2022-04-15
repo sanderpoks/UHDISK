@@ -196,6 +196,10 @@ class ehlMain:
                 print("ERROR: ElementClickInterceptedException")
                 sleep(timeout)
                 continue
+            except TimeoutException:
+                print("ERROR: TimeoutException")
+                sleep(timeout)
+                continue
             else: # Erroreid ei esinenud, lõpetame navigeerimise
                 return
             finally:
