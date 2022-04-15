@@ -132,25 +132,27 @@ class ehlMain:
         except IOError:
             print(f"Fail {HIGHLIGHTS_FILE} ei eksisteeri.")
 
-    def get_element(self, by, expression, name, clickable=False, check=False, timeout=20):
+    def element_exists(self, by, expression, name):
+        """ Funktsioon kontrollib, kas element eksisteerib (returnib True) või mitte (returnib False)"""
+        try:
+            self.driver.find_element(by, expression)
+        except NoSuchElementException:
+            print(f"element_exists: Elementi {name} ei eksisteeri")
+            return False
+        else:
+            print(f"element_exists: Element {name} eksisteerib")
+            return True
+
+
+    def get_element(self, by, expression, name, clickable=False, timeout=20):
         """ See funktsioon abstrahheerib seleniumis elemendi leidmise ning võtab arvesse laadimisaega ja blokeerivaid elemente
         Argumendid:
         clickable - kontrollib lisaks ka seda, et element oleks klikitav
-        check - ei oota timeouti ära vaid kontrollib kiirelt, kas element olemas, ja kui ei ole, siis returnib None
-
         """
         timeout = timeout
-        if check == True:
-            print(f"get_element: Kontrollin, kas element {name} eksisteerib")
-        else:
-            print(f"get_element: Otsin elementi {name}")
+
+        print(f"get_element: Otsin elementi {name}")
             
-        if check == True:
-            try:
-                self.driver.find_element(by, expression)
-            except NoSuchElementException:
-                print(f"Elementi {name} ei eksisteeri")
-                return None
         
         try:
             if clickable == False:
@@ -292,7 +294,7 @@ class ehlMain:
     def haiguslugude_otsimine(self, isikukood, hj_number):
  
         #Kui eelmine haiguslugu lahti, siis sulge
-        if self.get_element(By.ID,"patientBarExitLink", "Loo sulgemise X", check=True):            
+        if self.element_exists(By.ID,"patientBarExitLink", "Loo sulgemise X"):            
             #Ava registrid:
             element = self.get_element(By.XPATH,"//a[@title='Konto valik']", "Konto valik dropdown", clickable=True)
             element.click()
@@ -330,7 +332,7 @@ class ehlMain:
             #Ei leidnud soovitud HJ, funktsioon tagastab 0
             return
 
-        if not self.get_element(By.XPATH, "//a[@arn-evntid='showTreatmentHistory']", "Raviajalugu", check=True):
+        if not self.element_exists(By.XPATH, "//a[@arn-evntid='showTreatmentHistory']", "Raviajalugu"):
             #Lisame patsiendi registrisse
             self.lisa_isik_registrisse()
 
@@ -348,7 +350,7 @@ class ehlMain:
         sleep(1)
 
         #Kui lugu olemas, siis scrolli ja ava see
-        if not self.get_element(By.LINK_TEXT, str(hj_number), "Haigusjuhu number", check=True):
+        if not self.element_exists(By.LINK_TEXT, str(hj_number), "Haigusjuhu number"):
             return
 
         lugu = self.get_element(By.LINK_TEXT, str(hj_number), "Haigusjuhu number")
@@ -375,7 +377,7 @@ class ehlMain:
         except TimeoutException:
             return 0 #Põhjust ei olnud vaja sisestada
 
-        if self.get_element(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö", check=True):
+        if self.element_exists(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö"):
             element = self.get_element(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö")
             element.click()
             element = self.get_element(By.XPATH, "//input[@value='Jätka']", 'Nupp "Jätka"', clickable=True)
@@ -405,7 +407,7 @@ class ehlMain:
         sleep(1)
 
         #Kas kiirabi kaart on olemas
-        if not self.get_element(By.XPATH, "//td[contains(text(),'Kiirabikaart nr.')]", "Kiirabikaardi sissekanne", check=True):
+        if not self.element_exists(By.XPATH, "//td[contains(text(),'Kiirabikaart nr.')]", "Kiirabikaardi sissekanne"):
             self.kiirabikaart_tekst=""
             self.tootle_kiirabikaart()
             return
@@ -523,23 +525,23 @@ class ehlMain:
             return #Põhjust ei olnud vaja sisestada
 
         #muuda kõik markide kohta
-        if self.get_element(By.XPATH, "//a[@class='ico-tip mark one']", "Punane triaaž", check=True):
+        if self.element_exists(By.XPATH, "//a[@class='ico-tip mark one']", "Punane triaaž"):
             self.emo_triaaz_varv = "1"
             element = self.get_element(By.XPATH, "//a[@class='ico-tip mark one']", "Punane triaaž", clickable=True)
             element.click()
-        elif self.get_element(By.XPATH, "//a[@class='ico-tip mark two']", "Oranž triaaž", check=True):
+        elif self.element_exists(By.XPATH, "//a[@class='ico-tip mark two']", "Oranž triaaž"):
             self.emo_triaaz_varv = "2"
             element = self.get_element(By.XPATH, "//a[@class='ico-tip mark two']", "Oranž triaaž", clickable=True)
             element.click()
-        elif self.get_element(By.XPATH, "//a[@class='ico-tip mark three']", "Kollane triaaž", check=True):
+        elif self.element_exists(By.XPATH, "//a[@class='ico-tip mark three']", "Kollane triaaž"):
             self.emo_triaaz_varv = "3"
             element = self.get_element(By.XPATH, "//a[@class='ico-tip mark three']", "Kollane triaaž", clickable=True)
             element.click()
-        elif self.get_element(By.XPATH, "//a[@class='ico-tip mark four']", "Roheline triaaž", check=True):
+        elif self.element_exists(By.XPATH, "//a[@class='ico-tip mark four']", "Roheline triaaž"):
             self.emo_triaaz_varv = "4"
             element = self.get_element(By.XPATH, "//a[@class='ico-tip mark four']", "Roheline triaaž", clickable=True)
             element.click()
-        elif self.get_element(By.XPATH, "//a[@class='ico-tip mark five']", "Sinine triaaž", check=True):
+        elif self.element_exists(By.XPATH, "//a[@class='ico-tip mark five']", "Sinine triaaž"):
             self.emo_triaaz_varv = "5"
             element = self.get_element(By.XPATH, "//a[@class='ico-tip mark five']", "Sinine triaaž", clickable=True)
             element.click()
