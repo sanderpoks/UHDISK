@@ -113,7 +113,7 @@ class PreviousDiagnosisData:
     def __str__(self):
         return "\n".join(("### Varasemad diagnoosid ###",
         f"KOK/Astma:\t\t{str(self.kok_astma)}",
-        f"Südamepuudulikkus:\t{str(self.sydamepuudulikkus)}"))
+        f"Südamepuudulikkus:\t{str(self.sydamepuudulikkus)}\n"))
 
 @dataclass
 class HospitalisationData:
@@ -124,17 +124,21 @@ class HospitalisationData:
 
     def __str__(self):
         return "\n".join(("### Haiglaravi ###",
-                "Haiglaravi kestus:\t{str(self.hospitalised_duration)}",
-                "Intensiivravi:\t{str(self.icu)}",
-                "Intensiivravi kestus:\t{str(self.icu_duration)}",
-                "Surm haiglas:\t{str(self.hospitalised_death)}"))
+                f"Haiglaravi kestus:\t{str(self.hospitalised_duration)}",
+                f"Intensiivravi:\t{str(self.icu)}",
+                f"Intensiivravi kestus:\t{str(self.icu_duration)}",
+                f"Surm haiglas:\t{str(self.hospitalised_death)}"))
 
 @dataclass
 class DiagnosisData:
     diagnosis_list: List[str] = INITIAL_VALUE
 
     def __str__(self):
-        return "\n".join("### Diagnoosid ###".extend(self.diagnosis_list))
+        return_list = ["### Diagnoosid ###"]
+        if self.diagnosis_list == INITIAL_VALUE:
+            return "None"
+        return_list.extend(self.diagnosis_list)
+        return "\n".join(return_list)
 
 @dataclass
 class UuritavData:
@@ -247,7 +251,7 @@ class Scraper:
         data = emo_data
         ehl.navigeeri("triaaz")
         # Triaažikategooria
-        triaazi_varv = ehl.get_element(By.XPATH,"//span[@class='status adjustable status-serious']", "Triaažikategooria").text
+        triaazi_varv = ehl.get_element(By.XPATH,'//*[@id="application-main-content"]/div[2]/div[2]/span[2]', "Triaažikategooria").text
         if "punane" in triaazi_varv:
             data.triage = triaaz.PUNANE
         elif "oranž" in triaazi_varv:
@@ -356,6 +360,7 @@ class Scraper:
 
         data.kok_astma = self.isDiagnosisKOKAstma(diagnosis_set)
         data.sydamepuudulikkus = self.isDiagnosisSydamepuudulikkus(diagnosis_set)
+        self.driver.switch_to.default_content()
         return data
 
     def isDiagnosisKOKAstma(self, diagnoosid: set):
@@ -384,8 +389,47 @@ class Scraper:
         pass
 
     def scrape_hospitaliseerimise_info(self, hosp_data: HospitalisationData) -> HospitalisationData:
-        # Martin
-        pass 
+        data = hosp_data
+        int_osakonnad = {'KAIN - kardiointensiivravi osakond',
+                "AIEI - 1. intensiivravi",
+                "AITI - 2. intensiivravi",
+                "AIKI - 3. intensiivravi"}
+        # Lähme haigusjuhu koondandmete lehele
+        element = ehl.get_element(By.XPATH, '/html/body/div[1]/form/div[2]/div[2]/div/div/div/p[2]/a[3]', "HJ koondandmed", clickable=True)
+        element.click()
+        hosp_paevad = {}
+        tabel = ehl.get_element(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.referrerInfoWidget.list_listUpdate"]', "HJ koondandmed").get_attribute('innerHTML')
+        soup = BeautifulSoup(tabel, "html.parser")
+        for row in soup.findAll("tr"):
+            if len(row.get_text(strip=True)) != 0:
+                element_line = row.findAll("td")
+                osakond = element_line[0].get_text().strip()
+                paevi = int(element_line[3].get_text().strip())
+                if osakond not in hosp_paevad:
+                    hosp_paevad[osakond] = paevi
+                else:
+                    hosp_paevad[osakond] += paevi
+        data.hospitalised_duration = sum(hosp_paevad.values())
+        osakonnad = hosp_paevad.keys()
+        if set(osakonnad) & int_osakonnad:
+            data.icu = True
+            icu_days = 0
+            for i in osakonnad:
+                if i in int_osakonnad:
+                    icu_days += hosp_paevad[i]
+            data.icu_duration = icu_days
+        else:
+            data.icu = False
+            data.icu_duration = 0
+        ehl.navigeeri("Epikriis")
+        element = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td', "Väljakirjutamise staatus")
+        staatus = element.text
+        if staatus == "Surm":
+            data.hospitalised_death = True
+        else:
+            data.hospitalised_death = False
+
+        return data
     
 @dataclass
 class Uuritav:
