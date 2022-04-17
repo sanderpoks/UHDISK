@@ -12,6 +12,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from bs4 import BeautifulSoup
 
 APP_TITLE = "eHL Scraper"
+INITIAL_VALUE = object()
 
 class UnknownDigiluguTypeError(Exception):
     pass
@@ -22,6 +23,7 @@ class triaaz(Enum):
     KOLLANE = auto()
     ROHELINE = auto()
     SININE = auto()
+    PUUDUB = auto()
 
 class hingamissagedus(Enum):
     EI_HINGA = auto()
@@ -57,13 +59,13 @@ class Record:
 @dataclass
 class PhData:
     #Kiirabikaart olemas v mitte
-    resp_qual : Enum = field(init=False)
-    resp_quan : int = field(init=False)
-    spo2 : int = field(init=False)
-    sys : int = field(init=False)
-    dia : int = field(init=False)
-    hr : int = field(init=False)
-    temp : float = field(init=False)
+    resp_qual : Enum = INITIAL_VALUE
+    resp_quan : int = INITIAL_VALUE
+    spo2 : int = INITIAL_VALUE
+    sys : int = INITIAL_VALUE
+    dia : int = INITIAL_VALUE
+    hr : int = INITIAL_VALUE
+    temp : float = INITIAL_VALUE
 
     def __str__(self):
         return "\n".join(("### Kiirabikaart ###",
@@ -77,22 +79,24 @@ class PhData:
 
 @dataclass
 class EmoData:
-    red_trauma : bool = field(init=False)
-    triage : Enum = field(init=False)
-    triage_nurse : str = field(init=False)
-    resp_qual : Enum = field(init=False)
-    resp_quan : str = field(init=False)
-    spo2 : int = field(init=False)
-    sys : int = field(init=False)
-    dia : int = field(init=False)
-    hr : int = field(init=False)
-    temp : float = field(init=False)
+    red_trauma : bool = INITIAL_VALUE
+    triage : Enum = INITIAL_VALUE
+    triage_nurse : str = INITIAL_VALUE
+    triage_subtype : str = INITIAL_VALUE
+    resp_qual : Enum = INITIAL_VALUE
+    resp_quan : str = INITIAL_VALUE
+    spo2 : int = INITIAL_VALUE
+    sys : int = INITIAL_VALUE
+    dia : int = INITIAL_VALUE
+    hr : int = INITIAL_VALUE
+    temp : float = INITIAL_VALUE
 
     def __str__(self):
         return "\n".join(("### EMO ###",
         f"Punane trauma:\t{str(self.red_trauma)}",
-        f"Triaaž:\t{str(self.triage)}",
-        f"Triaažiõde:\t{str(self.triage_nurseTriaaž)}",
+        f"Triaaž:\t\t{str(self.triage)}",
+        f"Triaažitüüp:\t{str(self.triage_subtype)}",
+        f"Triaažiõde:\t{str(self.triage_nurse)}",
         f"Kval RR:\t{str(self.resp_qual)}",
         f"Kvan RR:\t{str(self.resp_quan)}",
         f"SpO2:\t\t{str(self.spo2)}",
@@ -103,8 +107,8 @@ class EmoData:
 
 @dataclass
 class PreviousDiagnosisData:
-    kok_astma : bool = field(init=False)
-    sydamepuudulikkus : bool = field(init=False)
+    kok_astma : bool = INITIAL_VALUE
+    sydamepuudulikkus : bool = INITIAL_VALUE
 
     def __str__(self):
         return "\n".join(("### Varasemad diagnoosid ###",
@@ -113,10 +117,10 @@ class PreviousDiagnosisData:
 
 @dataclass
 class HospitalisationData:
-    hospitalised_duration : int = field(init=False)
-    icu : bool = field(init=False)
-    icu_duration : int = field(init=False)
-    hospitalised_death : bool = field(init=False)
+    hospitalised_duration : int = INITIAL_VALUE
+    icu : bool = INITIAL_VALUE
+    icu_duration : int = INITIAL_VALUE
+    hospitalised_death : bool =  INITIAL_VALUE
 
     def __str__(self):
         return "\n".join(("### Haiglaravi ###",
@@ -127,7 +131,7 @@ class HospitalisationData:
 
 @dataclass
 class DiagnosisData:
-    diagnosis_list: List[str] = field(init=False)
+    diagnosis_list: List[str] = INITIAL_VALUE
 
     def __str__(self):
         return "\n".join("### Diagnoosid ###".extend(self.diagnosis_list))
@@ -157,7 +161,7 @@ class Scraper:
         self.driver = ehl.driver
 
     def scrape_kiirabi_kaart(self, ph_data: PhData) -> PhData:
-        kiirabiAndmed = PhData()
+        kiirabiAndmed = ph_data
         ehl.navigeeri("Päevik")
         element = ehl.get_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']", "Kõik päevad")
         element.click()
@@ -240,8 +244,76 @@ class Scraper:
         return kiirabiAndmed
     
     def scrape_triaaz(self, emo_data: EmoData) -> EmoData:
-        # Martin
-        pass
+        data = emo_data
+        ehl.navigeeri("triaaz")
+        # Triaažikategooria
+        triaazi_varv = ehl.get_element(By.XPATH,"//span[@class='status adjustable status-serious']", "Triaažikategooria").text
+        if "punane" in triaazi_varv:
+            data.triage = triaaz.PUNANE
+        elif "oranž" in triaazi_varv:
+            data.triage = triaaz.ORANZ
+        elif "kollane" in triaazi_varv:
+            data.triage = triaaz.KOLLANE
+        elif "roheline" in triaazi_varv:
+            data.triage = triaaz.ROHELINE
+        elif "sinine" in triaazi_varv:
+            data.triage = triaaz.SININE
+        print(f"Triaaž on {data.triage}")
+
+        #Triaaži alatüüp
+        element1 = ehl.get_element(By.XPATH, '//*[@id="fe-label-m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.regularTriageViewWidget.form.complaints"]', "Triaaži alatüüp")
+        element2 = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[3]/div/table/tbody/tr/td/span', "Triaaži alatüüp 2")
+        data.triage_subtype = element1.text + " " + element2.text
+        
+        #Triaažiõde
+        data.triage_nurse = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[1]/div[2]/table/tbody/tr[2]/td/span', "Triaažiõde").text
+
+        # Kvalitatiivne hingamissagedus
+        data.resp_qual = None #Automaatselt ei täida seda
+
+        # Kvantitatiivne hingamissagedus
+        if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[2]/td/span/span[2]', "Kvantitatiivne hingamissagedus"):
+            data.resp_quan = None
+        else:
+            data.resp_quan = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[2]/td/span/span[2]', "Kvantitatiivne hingamissagedus").text
+        
+        # SpO2
+        if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[3]/td/span/span[2]', "SpO2"):
+            data.spo2 = None
+        else:
+            data.spo2 = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[3]/td/span/span[2]', "SpO2").text
+
+        #Pulsisagedus
+        if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[5]/td/span/span[2]', "Pulsisagedus"):
+            data.hr = None
+        else:
+            data.hr = ehl.get_element(By.XPATH,'//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[5]/td/span/span[2]', "Hingamissagedus").text
+        # Vererõhk
+        if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td/span/span[2]', "Vererõhk"):
+            data.sys = None
+            data.dia = None
+        else:
+            bp = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td/span/span[2]', "Vererõhk").text
+            sys,dia = bp.split(" / ")
+            if sys:
+                data.sys = sys
+            else:
+                data.sys = None
+            if dia:
+                data.dia = dia
+            else:
+                data.dia = None
+
+        # Temp
+        if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[4]/td/span/span[2]', "Temp"):
+            data.temp = None
+        else:
+            data.temp = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[4]/td/span/span[2]', "temp").text
+
+
+        return data
+
+
 
     def scrape_varasemad_diagnoosid(self, prev_diag_data: PreviousDiagnosisData) -> PreviousDiagnosisData:
         data = prev_diag_data
@@ -333,7 +405,7 @@ class Uuritav:
     def scrape_data(self) -> None:
         self.data.ph = self.scraper.scrape_kiirabi_kaart(self.data.ph)
         self.data.emo = self.scraper.scrape_triaaz(self.data.emo)
-        self. data.prev_diag = self.scraper.scrape_varasemad_diagnoosid(self.data.prev_diag)
+        self.data.prev_diag = self.scraper.scrape_varasemad_diagnoosid(self.data.prev_diag)
         self.data.diagnosis = self.scraper.scrape_hj_diagnoosid(self.data.diagnosis)
         self.data.hospitalisation = self.scraper.scrape_hospitaliseerimise_info(self.data.hospitalisation)
         
