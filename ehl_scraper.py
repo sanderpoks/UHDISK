@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 from ehl_assistant import RecordManager, REDCAP_KEY_FILENAME, initiate_redcap, redcap_retrieve_remote, login_window
 from redcap import Project, RedcapError
@@ -8,8 +9,12 @@ from enum import Enum, auto
 from typing import List, Iterable
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
+from bs4 import BeautifulSoup
 
 APP_TITLE = "eHL Scraper"
+
+class UnknownDigiluguTypeError(Exception):
+    pass
 
 class triaaz(Enum):
     PUNANE = auto()
@@ -103,7 +108,7 @@ class PreviousDiagnosisData:
 
     def __str__(self):
         return "\n".join(("### Varasemad diagnoosid ###",
-        f"KOK/Astma:\t{str(self.kok_astma)}",
+        f"KOK/Astma:\t\t{str(self.kok_astma)}",
         f"Südamepuudulikkus:\t{str(self.sydamepuudulikkus)}"))
 
 @dataclass
@@ -239,12 +244,68 @@ class Scraper:
         pass
 
     def scrape_varasemad_diagnoosid(self, prev_diag_data: PreviousDiagnosisData) -> PreviousDiagnosisData:
+        data = prev_diag_data
+        digiloo_diag_tyybid = {
+                'Ambulatoorne epikriis ' : "amb",
+                'Eri-sõeluuring soolekasvaja avastamiseks ' : "soel_soole",
+                'Kiirabikaart ' : "kiirabi",
+                'Saatekiri ambulatoorsele vastuvõtule ' : "amb_saatekiri",
+                'Saatekiri eriarsti visiidile ' : "eri_saatekiri",
+                'Saatekiri uuringule ' : "uuring_saatekiri",
+                'Statsionaarne epikriis ' : "stats",
+                'Päevaravi epikriis ' : "paev",
+                'Saatekiri haiglaravile ' : "haigla_saatekiri",
+                'Eri-sõeluuring rinnanäärmekasvaja avastamiseks ' : "soel_rinna",
+                'Eri-sõeluuring emakakaelakasvaja avastamiseks ' : "soel_emakakael"
+                }
+        kaasatud_tyybid = {"amb", "stats", "paev"}
+        diagnosis_set = set()
+
         ehl.navigeeri("digilugu_diagnoosid")
         element = ehl.get_element(By.ID, "angularIframe", "Iframe")
         self.driver.switch_to.frame(element)
-#        element = ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[2]/div/div/table/thead/tr[1]/th/a", "Kõik kirjed", clickable=True)
-#        element.click
-        # See veel ei tööta, jätkan järgmine kord siit
+        element = ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[2]/div/div/table/thead/tr[1]/th/a", "Kõik kirjed", clickable=True)
+        element.click()
+        element = ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[2]/div/div/table/tbody", "Diagnooside tabel")
+        html_text = element.get_attribute('innerHTML')
+        soup = BeautifulSoup(html_text, "html.parser")
+        for row in soup.findAll("tr"):
+            element_list =  row.findAll("td")
+            for i in element_list:
+                title_text = i['data-title-text']
+                if title_text == "Diagnoosi kood, nimetus":
+                    rhk = i.get_text().split()[0]
+                if title_text == "Pärineb dokumendist":
+                    allikas = i.get_text()
+            if allikas not in digiloo_diag_tyybid:
+                raise UnknownDigiluguTypeError(f"Tüüpi {allikas} ei eksisteeri võimalike tüüpide nimekirjas")
+            if digiloo_diag_tyybid[allikas] in kaasatud_tyybid:
+                diagnosis_set.add(rhk)
+
+        data.kok_astma = self.isDiagnosisKOKAstma(diagnosis_set)
+        data.sydamepuudulikkus = self.isDiagnosisSydamepuudulikkus(diagnosis_set)
+        return data
+
+    def isDiagnosisKOKAstma(self, diagnoosid: set):
+        kok_astma_set = {"J44", "J44.0", "J44.1", "J44.8", "J44.9", "J45", "J45.0", "J45.1", "J45.8", "J45.9", "J46"}
+        if (diagnoosid & kok_astma_set):
+            print(f"Patsiendil on KOK/astma - diagnoosid {kok_astma_set.intersection(diagnoosid)}")
+            return True
+        else:
+            print("Patsiendil ei ole KOKi ega Astmat anamneesis")
+            return False
+
+    def isDiagnosisSydamepuudulikkus(self, diagnoosid: set):
+        sydamepuudulikkus_set = {"I50", "I50.0", "I50.1", "I50.9", "I11.0", "I13.0", "I13.2", "I42", "I42.0", "I42.1", "I42.2", "I42.3", "I42.4", "I42.5", "I42.6",
+                "I42.7", "I42.8", "I42.9"}
+        if (diagnoosid & sydamepuudulikkus_set):
+            print(f"Patsiendil on sydamepuudulikkus - diagnoosid {sydamepuudulikkus_set.intersection(diagnoosid)}")
+            return True
+        else:
+            print("Patsiendil ei ole südamepuudulikkust anamneesis")
+            return False
+
+
 
     def scrape_hj_diagnoosid(self, diagnoosid_data: DiagnosisData) -> DiagnosisData:
         # Martin
