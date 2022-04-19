@@ -6,7 +6,7 @@ from ehlNavigeerimine import ehlMain
 from time import sleep
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import List, Iterable
+from typing import List, Iterable, Set
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from bs4 import BeautifulSoup
@@ -30,6 +30,16 @@ class hingamissagedus(Enum):
     HYPOVENTILATSIOON = auto()
     NORMOVENTILATSIOON = auto()
     HYPERVENTILATSIOON = auto()
+
+class uhdisk_diag(Enum):
+    PNEUMONIA = auto()
+    PNEUMOTHORAX = auto()
+    PLEURAL_EFFUSION = auto()
+    PULMONARY_EDEMA = auto()
+    MYOCARDIAL_INFARCTION = auto()
+    PULMONARY_EMBOLISM = auto()
+    COPD_ASTHMA = auto()
+    PERICARDIAL_EFFUSION = auto()
 
 @dataclass
 class Record:
@@ -127,18 +137,25 @@ class HospitalisationData:
                 f"Haiglaravi kestus:\t{str(self.hospitalised_duration)}",
                 f"Intensiivravi:\t{str(self.icu)}",
                 f"Intensiivravi kestus:\t{str(self.icu_duration)}",
-                f"Surm haiglas:\t{str(self.hospitalised_death)}"))
+                f"Surm haiglas:\t{str(self.hospitalised_death)}\n"))
 
 @dataclass
 class DiagnosisData:
-    diagnosis_list: List[str] = INITIAL_VALUE
+    diagnosis_list: Set[str] = INITIAL_VALUE
+    uhdisk: bool = INITIAL_VALUE
+    uhdisk_list : Set[Enum] = INITIAL_VALUE
 
     def __str__(self):
-        return_list = ["### Diagnoosid ###"]
+        header = "### Diagnoosid ###"
         if self.diagnosis_list == INITIAL_VALUE:
-            return "None"
-        return_list.extend(self.diagnosis_list)
-        return "\n".join(return_list)
+            return "None" #Mingil põhjusel pole patsiendil ühtegi diagnoosi haigusjuhus leitud
+        diag_list_return = f"Diagnoosid:\t{str(self.diagnosis_list)}"
+        uhdisk_return = f"UHDISK:\t{str(self.uhdisk)}"
+        if self.uhdisk:
+            uhdisk_list_return = f"UHDISK_diagnoosid:\t{str(self.uhdisk_list)}"
+        else:
+            uhdisk_list_return = "UHDISK diagnoose ei ole"
+        return "\n".join([header, diag_list_return, uhdisk_return, uhdisk_list_return])
 
 @dataclass
 class UuritavData:
@@ -268,6 +285,10 @@ class Scraper:
         element1 = ehl.get_element(By.XPATH, '//*[@id="fe-label-m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.regularTriageViewWidget.form.complaints"]', "Triaaži alatüüp")
         element2 = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[3]/div/table/tbody/tr/td/span', "Triaaži alatüüp 2")
         data.triage_subtype = element1.text + " " + element2.text
+        if data.triage_subtype == "Trauma: Trauma, mis nõuavad traumameeskonna kokkukutsumist":
+            data.red_trauma = True
+        else:
+            data.red_trauma = False
         
         #Triaažiõde
         data.triage_nurse = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[1]/div[2]/table/tbody/tr[2]/td/span', "Triaažiõde").text
@@ -332,7 +353,10 @@ class Scraper:
                 'Päevaravi epikriis ' : "paev",
                 'Saatekiri haiglaravile ' : "haigla_saatekiri",
                 'Eri-sõeluuring rinnanäärmekasvaja avastamiseks ' : "soel_rinna",
-                'Eri-sõeluuring emakakaelakasvaja avastamiseks ' : "soel_emakakael"
+                'Eri-sõeluuring emakakaelakasvaja avastamiseks ' : "soel_emakakael",
+                'Saatekirja vastus ' : "vastus_saatekiri",
+                'Saatekiri e-konsultatsioonile ' : "e_kons_saatekiri",
+                'Hambaravikaart ' : "hambaravikaart"
                 }
         kaasatud_tyybid = {"amb", "stats", "paev"}
         diagnosis_set = set()
@@ -385,8 +409,53 @@ class Scraper:
 
 
     def scrape_hj_diagnoosid(self, diagnoosid_data: DiagnosisData) -> DiagnosisData:
-        # Martin
-        pass
+        data = diagnoosid_data
+        pneumonia_rhk = {"J12", "J12.0", "J12.1", "J12.2", "J12.8", "J12.9", "J13", "J14", "J15", "J15.0", "J15.1", "J15.2", "J15.3", "J15.4", "J15.5",
+                "J15.6", "J15.7", "J15.8", "J15.9", "J16", "J16.0", "J16.8", "J17", "J17.0", "J17.1", "J17.2", "J17.3", "J17.8", "J18", "J18.0",
+                "J18.1", "J18.2", "J18.8", "J18.9", "J85.1", "J69.0", "J69.1", "J69.8"}
+        pneumotooraks_rhk = {"J93", "J93.0", "J93.1", "J93.8", "J93.9", "S27.0", "S27.2", "J94.2", "A15.0", "A16.0", "A16.2"}
+        pleuraefusioon_rhk = {"J90", "J94.0", "J91", "J94.2", "J94.8", "S27.1", "S27.2"}
+        perikard_rhk = {"I30", "I30.0", "I30.1", "I30.8", "I30.9", "I31.2", "I31.3", "I31.8", "S26.0", "I31.9", "I23.0"}
+        mi_rhk = {"I21", "I21.0", "I21.1", "I21.2", "I21.3", "I21.4", "I21.9", "I22", "I22.0", "I22.1", "I22.8", "I22.9"}
+        kate_rhk = {"I26", "I26.0", "I26.9"}
+        kopsuturse_rhk = {"J81", "I50.1", "J68.1"}
+        kok_astma_rhk = {"J44", "J44.0", "J44.1", "J44.8", "J44.9", "J45", "J45.0", "J45.1", "J45.8", "J45.9", "J46"}
+        uhdisk_diagnoses = pneumonia_rhk.union(pneumotooraks_rhk, pleuraefusioon_rhk, perikard_rhk, mi_rhk, kate_rhk, kopsuturse_rhk, kok_astma_rhk)
+        diagnoses = set()
+        if not ehl.element_exists(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f0.detailedEpicrisisModificationWidget._FINAL_DIAGNOSIS.list_listUpdate"]', "Diagnooside tabel"):
+            ehl.navigeeri("Epikriis")
+        tabel = ehl.get_element(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f0.detailedEpicrisisModificationWidget._FINAL_DIAGNOSIS.list_listUpdate"]', "Diagnooside tabel").get_attribute('innerHTML')
+        soup = BeautifulSoup(tabel, "html.parser")
+        for row in soup.findAll("tr"):
+            if len(row.get_text(strip=True)) != 0:
+                element_line = row.findAll("td")
+                if len(element_line) > 2:
+                    diagnoses.add(element_line[2].get_text().strip())
+        if diagnoses & uhdisk_diagnoses:
+            data.uhdisk = True
+        else:
+            data.uhdisk = False
+        data.diagnosis_list = diagnoses
+        uhdisk_set = set()
+        if diagnoses & pneumonia_rhk:
+            uhdisk_set.add(uhdisk_diag.PNEUMONIA)
+        if diagnoses & pneumotooraks_rhk:
+            uhdisk_set.add(uhdisk_diag.PNEUMOTHORAX)
+        if diagnoses & pleuraefusioon_rhk:
+            uhdisk_set.add(uhdisk_diag.PLEURAL_EFFUSION)
+        if diagnoses & perikard_rhk:
+            uhdisk_set.add(uhdisk_diag.PERICARDIAL_EFFUSION)
+        if diagnoses & mi_rhk:
+            uhdisk_set.add(uhdisk_diag.MYOCARDIAL_INFARCTION)
+        if diagnoses & kate_rhk:
+            uhdisk_set.add(uhdisk_diag.PULMONARY_EMBOLISM)
+        if diagnoses & kopsuturse_rhk:
+            uhdisk_set.add(uhdisk_diag.PULMONARY_EDEMA)
+        if diagnoses & kok_astma_rhk:
+            uhdisk_set.add(uhdisk_diag.COPD_ASTHMA)
+        data.uhdisk_list = uhdisk_set
+
+        return data
 
     def scrape_hospitaliseerimise_info(self, hosp_data: HospitalisationData) -> HospitalisationData:
         data = hosp_data
@@ -394,11 +463,21 @@ class Scraper:
                 "AIEI - 1. intensiivravi",
                 "AITI - 2. intensiivravi",
                 "AIKI - 3. intensiivravi"}
+        #ehl.navigeeri("Epikriis") #Eeldame, et oleme juba sel hetkel epikriisis
+        element = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td', "Väljakirjutamise staatus")
+        staatus = element.text
+        if staatus == "Surm":
+            data.hospitalised_death = True
+        else:
+            data.hospitalised_death = False
         # Lähme haigusjuhu koondandmete lehele
         element = ehl.get_element(By.XPATH, '/html/body/div[1]/form/div[2]/div[2]/div/div/div/p[2]/a[3]', "HJ koondandmed", clickable=True)
         element.click()
         hosp_paevad = {}
-        tabel = ehl.get_element(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.referrerInfoWidget.list_listUpdate"]', "HJ koondandmed").get_attribute('innerHTML')
+        if not ehl.element_exists(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.referrerInfoWidget.list_listUpdate"]', "Osakondade tabel"):
+            print("Patsienti ei hospitaliseeritud")
+            return None #Patsient ei hospitaliseeritud
+        tabel = ehl.get_element(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.referrerInfoWidget.list_listUpdate"]', "Osakondade tabel").get_attribute('innerHTML')
         soup = BeautifulSoup(tabel, "html.parser")
         for row in soup.findAll("tr"):
             if len(row.get_text(strip=True)) != 0:
@@ -421,13 +500,6 @@ class Scraper:
         else:
             data.icu = False
             data.icu_duration = 0
-        ehl.navigeeri("Epikriis")
-        element = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td', "Väljakirjutamise staatus")
-        staatus = element.text
-        if staatus == "Surm":
-            data.hospitalised_death = True
-        else:
-            data.hospitalised_death = False
 
         return data
     
@@ -447,11 +519,11 @@ class Uuritav:
         self.print()
 
     def scrape_data(self) -> None:
+        self.data.diagnosis = self.scraper.scrape_hj_diagnoosid(self.data.diagnosis)
+        self.data.hospitalisation = self.scraper.scrape_hospitaliseerimise_info(self.data.hospitalisation)
         self.data.ph = self.scraper.scrape_kiirabi_kaart(self.data.ph)
         self.data.emo = self.scraper.scrape_triaaz(self.data.emo)
         self.data.prev_diag = self.scraper.scrape_varasemad_diagnoosid(self.data.prev_diag)
-        self.data.diagnosis = self.scraper.scrape_hj_diagnoosid(self.data.diagnosis)
-        self.data.hospitalisation = self.scraper.scrape_hospitaliseerimise_info(self.data.hospitalisation)
         
 
     def print(self) -> None:
