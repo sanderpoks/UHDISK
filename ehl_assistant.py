@@ -279,11 +279,17 @@ def initiate_redcap():
         project = redcap_connect()  # Ja seejärel seostab RedCapi projektiga
     return project
 
+def setup_logger() -> None:
+    logging.basicConfig(filename="ehl_log.txt", filemode='w', level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
+    selenium_logger = logging.getLogger('selenium.webdriver.remote.remote_connection')
+    selenium_logger.disabled = True
 
 if __name__ == "__main__":
     # Main program flow
     VERSION = get_version()
     APP_TITLE = f"ehl_helper - {VERSION}"
+
+    setup_logger()
 
     # Viime aktiivse töökausta faili asukohta, et lisafailid oleks leitavad
     os.chdir(os.path.dirname(sys.argv[0]))

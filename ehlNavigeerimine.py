@@ -303,6 +303,7 @@ class ehlMain:
             #Ava registrid:
             element = self.get_element(By.XPATH,"//a[@title='Konto valik']", "Konto valik dropdown", clickable=True)
             element.click()
+            sleep(0.5)
             
             element = self.get_element(By.XPATH, "//a[contains(text(),'Registrid')]", 'Konto "Registrid"', clickable=True)
             element.click()
