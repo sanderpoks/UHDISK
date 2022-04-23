@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, ElementNotInteractableException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, ElementNotInteractableException, NoSuchElementException, JavascriptException
 from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import pandas as pd
@@ -13,6 +13,7 @@ import csv
 from redcap import Project, RedcapError
 import platform
 from login_data import UURIJA_ISIKUKOOD, UURIJA_TELEFON, SISSELOGIMISE_VIIS
+import logging
 
 HIGHLIGHTS_FILE = "./highlights"
 
@@ -110,16 +111,16 @@ class ehlMain:
     def get_chromedriver_path(self):
         opsys = platform.system()
         if opsys == "Linux":
-            print("OS Linux")
+            logging.info("OS Linux")
             return "./chromedriver/chromedriver_linux"
         elif opsys == "Windows":
-            print("OS Windows")
+            logging.info("OS Windows")
             return "./chromedriver/chromedriver_windows.exe"
         elif opsys == "Darwin":
-            print("OS Mac")
+            logging.info("OS Mac")
             return "./chromedriver/chromedriver_mac"
         else:
-            print("Operating system not supported")
+            logging.info("Operating system not supported")
         
 
     
@@ -130,17 +131,17 @@ class ehlMain:
                 highlight_list = file.read().splitlines()
             return highlight_list
         except IOError:
-            print(f"Fail {HIGHLIGHTS_FILE} ei eksisteeri.")
+            logging.info(f"Fail {HIGHLIGHTS_FILE} ei eksisteeri.")
 
     def element_exists(self, by, expression, name):
         """ Funktsioon kontrollib, kas element eksisteerib (returnib True) või mitte (returnib False)"""
         try:
             self.driver.find_element(by, expression)
         except NoSuchElementException:
-            print(f"element_exists: Elementi {name} ei eksisteeri")
+            logging.info(f"element_exists: Elementi {name} ei eksisteeri")
             return False
         else:
-            print(f"element_exists: Element {name} eksisteerib")
+            logging.info(f"element_exists: Element {name} eksisteerib")
             return True
 
 
@@ -151,20 +152,24 @@ class ehlMain:
         """
         timeout = timeout
 
-        print(f"get_element: Otsin elementi {name}")
+        logging.info(f"get_element: Otsin elementi {name}")
             
         
-        try:
-            if clickable == False:
-                element_present = EC.presence_of_element_located((by, expression))
-                element = WebDriverWait(self.driver, timeout).until(element_present)
-            elif clickable == True:
-                element_clickable = EC.element_to_be_clickable((by, expression))
-                element = WebDriverWait(self.driver, timeout).until(element_clickable)
-            return element
-        except TimeoutException:
-            print(f"Timeout: Elementi {name} ei jõutud ära oodata")
-            raise
+        for _ in range(3):
+            try:
+                if clickable == False:
+                    element_present = EC.presence_of_element_located((by, expression))
+                    element = WebDriverWait(self.driver, timeout).until(element_present)
+                elif clickable == True:
+                    element_clickable = EC.element_to_be_clickable((by, expression))
+                    element = WebDriverWait(self.driver, timeout).until(element_clickable)
+                return element
+            except TimeoutException:
+                logging.error(f"Timeout: Elementi {name} ei jõutud ära oodata")
+                raise
+            except JavascriptException:
+                logging.error("Javascript error")
+                break
 
 
     def navigeeri(self, element:str, *args):
@@ -185,21 +190,21 @@ class ehlMain:
         
         while counter < 5:
             try:
-                print(f"Funktsion NAVIGEERI parameetriga {element}")
+                logging.info(f"Funktsion NAVIGEERI parameetriga {element}")
                 if element in navigate_functions:
                     navigate_functions[element](*args)
                 else:
                     self.ava_menyy_alajaotis(element)
             except ElementNotInteractableException:
-                print("ERROR: ElementNotInteractableException")
+                logging.error("ERROR: ElementNotInteractableException")
                 sleep(timeout)
                 continue
             except ElementClickInterceptedException:
-                print("ERROR: ElementClickInterceptedException")
+                logging.error("ERROR: ElementClickInterceptedException")
                 sleep(timeout)
                 continue
             except TimeoutException:
-                print("ERROR: TimeoutException")
+                logging.error("ERROR: TimeoutException")
                 sleep(timeout)
                 continue
             else: # Erroreid ei esinenud, lõpetame navigeerimise

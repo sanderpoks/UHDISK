@@ -4,6 +4,7 @@ import tkinter as tk
 import ehlNavigeerimine
 import os
 import sys
+import logging
 
 REDCAP_KEY_FILENAME = "redcap_api_key"
 VERSION_FILENAME = "./version"
@@ -40,7 +41,7 @@ def get_version():
             version = file.read().strip()
             return version
     except IOError:
-        print(f"Fail {VERSION_FILENAME} ei eksisteeri.")
+        logging.error(f"Fail {VERSION_FILENAME} ei eksisteeri.")
 
 def redcap_connect():
     URL = "https://redcap.ut.ee/api/"
@@ -49,17 +50,17 @@ def redcap_connect():
         fail = open(REDCAP_KEY_FILENAME, "r")
         api_key = fail.read().strip()
     except IOError:
-        print(f"RedCapi API Key fail '{REDCAP_KEY_FILENAME}' puudub töökaustast. Loome uue faili.")
+        logging.error(f"RedCapi API Key fail '{REDCAP_KEY_FILENAME}' puudub töökaustast. Loome uue faili.")
         return None
 
     if len(api_key) != 32:
-        print("API Key ei ole õige pikkusega.")
+        logging.error("API Key ei ole õige pikkusega.")
         return None
 
     try:
         project = Project(URL, api_key)
     except RedcapError:
-        print("Antud RedCapi API key ei võimalda andmebaasile ligipääsu.")
+        logging.error("Antud RedCapi API key ei võimalda andmebaasile ligipääsu.")
         return None
 
     return project
@@ -203,7 +204,7 @@ class Record:
     def __init__(self, project, record_id):
         self.record_id = record_id
         record = redcap_retrieve_remote(project, record_id)[0]
-        print(record)
+        logging.info(record)
         self.isikukood = record["id_code"]
         self.hj_number = record["ref_num"]
 
@@ -238,12 +239,12 @@ class RecordManager():
 
     def current(self):
         current_record_id = self.record_id_list[self.index]
-        print(f"Current record ID is {current_record_id}")
+        logging.info(f"Current record ID is {current_record_id}")
         return self.retrieve_record(current_record_id)
 
     def next(self):
         self.index += 1
-        print(f"Index is {self.index}")
+        logging.info(f"Index is {self.index}")
         if self.index > len(self.record_id_list):
             self.index -= 1
         return self.current()
@@ -263,10 +264,10 @@ class RecordManager():
     def retrieve_record(self, current_record_id):
         try:
             record = self.records[self.index]
-            print("Record found locally")
+            logging.info("Record found locally")
             return record
         except IndexError:
-            print("Record not found locally, retrieveing")
+            logging.info("Record not found locally, retrieveing")
             record = Record(project, current_record_id)
             self.records.append(record)
             return(record)

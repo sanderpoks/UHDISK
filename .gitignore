@@ -13,3 +13,6 @@ dist/
 ehl_assistant.spec
 dist_linux/
 dist_windows/
+
+# Logifailid
+ehl_log.txt

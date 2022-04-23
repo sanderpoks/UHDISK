@@ -10,6 +10,7 @@ from typing import List, Iterable, Set
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from bs4 import BeautifulSoup
+import logging
 
 APP_TITLE = "eHL Scraper"
 INITIAL_VALUE = object()
@@ -54,7 +55,7 @@ class Record:
         """ Tõmbab redcapist alla uuritava isikukoodi ja HJ info ja paneb selle instantsi atribuutidesse """
         project = initiate_redcap()
         if project == None:
-            print("RedCap andmebaasiga ühendumine ebaõnnestus")
+            logging.error("RedCap andmebaasiga ühendumine ebaõnnestus")
             raise RedcapError
         record = redcap_retrieve_remote(project, self.rc_id)[0]
         self.isikukood = record["id_code"]
@@ -279,7 +280,7 @@ class Scraper:
             data.triage = triaaz.ROHELINE
         elif "sinine" in triaazi_varv:
             data.triage = triaaz.SININE
-        print(f"Triaaž on {data.triage}")
+        logging.info(f"Triaaž on {data.triage}")
 
         #Triaaži alatüüp
         element1 = ehl.get_element(By.XPATH, '//*[@id="fe-label-m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.regularTriageViewWidget.form.complaints"]', "Triaaži alatüüp")
@@ -356,7 +357,8 @@ class Scraper:
                 'Eri-sõeluuring emakakaelakasvaja avastamiseks ' : "soel_emakakael",
                 'Saatekirja vastus ' : "vastus_saatekiri",
                 'Saatekiri e-konsultatsioonile ' : "e_kons_saatekiri",
-                'Hambaravikaart ' : "hambaravikaart"
+                'Hambaravikaart ' : "hambaravikaart",
+                'Kutse skriiningus osalemiseks ' : "skriining_kutse"
                 }
         kaasatud_tyybid = {"amb", "stats", "paev"}
         diagnosis_set = set()
@@ -390,20 +392,20 @@ class Scraper:
     def isDiagnosisKOKAstma(self, diagnoosid: set):
         kok_astma_set = {"J44", "J44.0", "J44.1", "J44.8", "J44.9", "J45", "J45.0", "J45.1", "J45.8", "J45.9", "J46"}
         if (diagnoosid & kok_astma_set):
-            print(f"Patsiendil on KOK/astma - diagnoosid {kok_astma_set.intersection(diagnoosid)}")
+            logging.info(f"Patsiendil on KOK/astma - diagnoosid {kok_astma_set.intersection(diagnoosid)}")
             return True
         else:
-            print("Patsiendil ei ole KOKi ega Astmat anamneesis")
+            logging.info("Patsiendil ei ole KOKi ega Astmat anamneesis")
             return False
 
     def isDiagnosisSydamepuudulikkus(self, diagnoosid: set):
         sydamepuudulikkus_set = {"I50", "I50.0", "I50.1", "I50.9", "I11.0", "I13.0", "I13.2", "I42", "I42.0", "I42.1", "I42.2", "I42.3", "I42.4", "I42.5", "I42.6",
                 "I42.7", "I42.8", "I42.9"}
         if (diagnoosid & sydamepuudulikkus_set):
-            print(f"Patsiendil on sydamepuudulikkus - diagnoosid {sydamepuudulikkus_set.intersection(diagnoosid)}")
+            logging.info(f"Patsiendil on sydamepuudulikkus - diagnoosid {sydamepuudulikkus_set.intersection(diagnoosid)}")
             return True
         else:
-            print("Patsiendil ei ole südamepuudulikkust anamneesis")
+            logging.info("Patsiendil ei ole südamepuudulikkust anamneesis")
             return False
 
 
@@ -475,7 +477,7 @@ class Scraper:
         element.click()
         hosp_paevad = {}
         if not ehl.element_exists(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.referrerInfoWidget.list_listUpdate"]', "Osakondade tabel"):
-            print("Patsienti ei hospitaliseeritud")
+            logging.info("Patsienti ei hospitaliseeritud")
             return None #Patsient ei hospitaliseeritud
         tabel = ehl.get_element(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.referrerInfoWidget.list_listUpdate"]', "Osakondade tabel").get_attribute('innerHTML')
         soup = BeautifulSoup(tabel, "html.parser")
@@ -513,10 +515,9 @@ class Uuritav:
     def __post_init__(self) -> None:
         self.record = Record(self.rc_id)
 
-        self.log_in()
         self.ehl_navigate()
         self.scrape_data()
-        self.print()
+        print(self)
 
     def scrape_data(self) -> None:
         self.data.diagnosis = self.scraper.scrape_hj_diagnoosid(self.data.diagnosis)
@@ -526,33 +527,44 @@ class Uuritav:
         self.data.prev_diag = self.scraper.scrape_varasemad_diagnoosid(self.data.prev_diag)
         
 
-    def print(self) -> None:
-        print(self.record)
-        print(self.data)
-
-    def log_in(self):
-        ehl.navigeeri("logi_sisse")
+    def __str__(self) -> None:
+        return (str(self.record) + str(self.data))
 
     def ehl_navigate(self) -> None:
         ehl.navigeeri("haiguslugu", self.record.isikukood, self.record.hj_number)
 
     
+def log_in() -> None:
+    ehl.navigeeri("logi_sisse")
+
+def setup_logger() -> None:
+    logging.basicConfig(filename="ehl_log.txt", filemode='w', level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
+    selenium_logger = logging.getLogger('selenium.webdriver.remote.remote_connection')
+    selenium_logger.disabled = True
+
 
 def get_redcap_id_list() -> Iterable[int]:
-    return [2555]
-    #return range(500,510)
+    #return [2555]
+    return range(540,544)
     #return [250,272,290]
     #pass
 
 def main():
-    global ehl
-    ehl = ehlMain()
-    ehl.ava()
-    #login_window("eHL Scraper")
-    redcap_id_list = get_redcap_id_list()
-    for rc_id in redcap_id_list:
-        uuritav = Uuritav(rc_id)
-        # Upload to redcap?
+    try:
+        setup_logger()
+        global ehl
+        ehl = ehlMain()
+        ehl.ava()
+        #login_window("eHL Scraper")
+        redcap_id_list = get_redcap_id_list()
+        log_in()
+        for rc_id in redcap_id_list:
+            uuritav = Uuritav(rc_id)
+            # Upload to redcap?
+    except Exception as e:
+        logging.exception(e)
+        raise
+
 
 if __name__ == "__main__":
     main()
