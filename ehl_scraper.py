@@ -11,6 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from bs4 import BeautifulSoup
 import logging
+from datetime import date
 
 APP_TITLE = "eHL Scraper"
 INITIAL_VALUE = object()
@@ -315,10 +316,22 @@ class Scraper:
         else:
             data.hr = ehl.get_element(By.XPATH,'//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[5]/td/span/span[2]', "Hingamissagedus").text
         # Vererõhk
-        if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td/span/span[2]', "Vererõhk"):
-            data.sys = None
-            data.dia = None
-        else:
+        if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td/span/span[2]', "Vererõhk dex"):
+            if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[2]/td/span/span[2]', "Vererõhk sin"):
+                data.sys = None
+                data.dia = None
+            else: #Vasakul käel vererõhk
+                bp = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[2]/td/span/span[2]', "Vererõhk").text
+                sys,dia = bp.split(" / ")
+                if sys:
+                    data.sys = sys
+                else:
+                    data.sys = None
+                if dia:
+                    data.dia = dia
+                else:
+                    data.dia = None
+        else: # Paremal käel vererõhk
             bp = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td/span/span[2]', "Vererõhk").text
             sys,dia = bp.split(" / ")
             if sys:
@@ -341,7 +354,7 @@ class Scraper:
 
 
 
-    def scrape_varasemad_diagnoosid(self, prev_diag_data: PreviousDiagnosisData) -> PreviousDiagnosisData:
+    def scrape_varasemad_diagnoosid(self, prev_diag_data: PreviousDiagnosisData, index_date: date) -> PreviousDiagnosisData:
         data = prev_diag_data
         digiloo_diag_tyybid = {
                 'Ambulatoorne epikriis ' : "amb",
@@ -379,9 +392,12 @@ class Scraper:
                     rhk = i.get_text().split()[0]
                 if title_text == "Pärineb dokumendist":
                     allikas = i.get_text()
+                if title_text == "Koostamise aeg":
+                    koostamise_date_str = i.get_text().split()[0]
             if allikas not in digiloo_diag_tyybid:
                 raise UnknownDigiluguTypeError(f"Tüüpi {allikas} ei eksisteeri võimalike tüüpide nimekirjas")
-            if digiloo_diag_tyybid[allikas] in kaasatud_tyybid:
+            koostamise_date = date(int(koostamise_date_str[6:10]), int(koostamise_date_str[3:5]), int(koostamise_date_str[:2]))
+            if digiloo_diag_tyybid[allikas] in kaasatud_tyybid and koostamise_date < index_date:
                 diagnosis_set.add(rhk)
 
         data.kok_astma = self.isDiagnosisKOKAstma(diagnosis_set)
@@ -514,6 +530,7 @@ class Uuritav:
     
     def __post_init__(self) -> None:
         self.record = Record(self.rc_id)
+        self.index_date = get_hj_date(self.record)
 
         self.ehl_navigate()
         self.scrape_data()
@@ -524,7 +541,7 @@ class Uuritav:
         self.data.hospitalisation = self.scraper.scrape_hospitaliseerimise_info(self.data.hospitalisation)
         self.data.ph = self.scraper.scrape_kiirabi_kaart(self.data.ph)
         self.data.emo = self.scraper.scrape_triaaz(self.data.emo)
-        self.data.prev_diag = self.scraper.scrape_varasemad_diagnoosid(self.data.prev_diag)
+        self.data.prev_diag = self.scraper.scrape_varasemad_diagnoosid(self.data.prev_diag, self.index_date)
         
 
     def __str__(self) -> None:
@@ -548,6 +565,12 @@ def get_redcap_id_list() -> Iterable[int]:
     return range(540,544)
     #return [250,272,290]
     #pass
+
+def get_hj_date(record: Record) -> date:
+    # Ekstaheerib haigusjuhu numbrist külastuse kuupäeva formaadis DD.MM.YYYY
+    hj_number = record.hj_number
+    hj_date = date(int(hj_number[:4]), int(hj_number[4:6]), int(hj_number[6:8]))
+    return hj_date
 
 def main():
     try:
