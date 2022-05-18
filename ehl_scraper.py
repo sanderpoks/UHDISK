@@ -20,45 +20,47 @@ class UnknownDigiluguTypeError(Exception):
     pass
 
 class triaaz(Enum):
-    PUNANE = auto()
-    ORANZ = auto()
-    KOLLANE = auto()
-    ROHELINE = auto()
-    SININE = auto()
-    PUUDUB = auto()
+    PUNANE = 1
+    ORANZ = 2
+    KOLLANE = 3
+    ROHELINE = 4
+    SININE = 5
+    PUUDUB = 6
 
 class hingamissagedus(Enum):
-    EI_HINGA = auto()
-    HYPOVENTILATSIOON = auto()
-    NORMOVENTILATSIOON = auto()
-    HYPERVENTILATSIOON = auto()
+    EI_HINGA = 1
+    HYPOVENTILATSIOON = 2
+    NORMOVENTILATSIOON = 3
+    HYPERVENTILATSIOON = 4
 
 class uhdisk_diag(Enum):
-    PNEUMONIA = auto()
-    PNEUMOTHORAX = auto()
-    PLEURAL_EFFUSION = auto()
-    PULMONARY_EDEMA = auto()
-    MYOCARDIAL_INFARCTION = auto()
-    PULMONARY_EMBOLISM = auto()
-    COPD_ASTHMA = auto()
-    PERICARDIAL_EFFUSION = auto()
+    PNEUMONIA = 1
+    PNEUMOTHORAX = 7
+    PLEURAL_EFFUSION = 6
+    PULMONARY_EDEMA = 2
+    MYOCARDIAL_INFARCTION = 3
+    PULMONARY_EMBOLISM = 4
+    COPD_ASTHMA = 5
+    PERICARDIAL_EFFUSION = 8
+
 
 @dataclass
 class Record:
     rc_id : int
     isikukood : int = None
     hj_number : str = None
+    project: Project = None
 
     def __post_init__(self):
         self.fill_nav_data()
 
     def fill_nav_data(self):
         """ Tõmbab redcapist alla uuritava isikukoodi ja HJ info ja paneb selle instantsi atribuutidesse """
-        project = initiate_redcap()
-        if project == None:
+        self.project = initiate_redcap()
+        if self.project == None:
             logging.error("RedCap andmebaasiga ühendumine ebaõnnestus")
             raise RedcapError
-        record = redcap_retrieve_remote(project, self.rc_id)[0]
+        record = redcap_retrieve_remote(self.project, self.rc_id)[0]
         self.isikukood = record["id_code"]
         self.hj_number = record["ref_num"]
 
@@ -195,8 +197,10 @@ class Scraper:
 
         # Kas kiirabi kaart on olemas
         if not self.driver.find_elements(By.XPATH, "//td[contains(text(),'Kiirabikaart nr.')]"):
-            #Siin märgi, et kiirabi kaarti ei leitud ehk tagasta vastav class
-            return None
+            sleep(3)
+            if not self.driver.find_elements(By.XPATH, "//td[contains(text(),'Kiirabikaart nr.')]"):
+                #Siin märgi, et kiirabi kaarti ei leitud ehk tagasta vastav class
+                return None
 
         kiirabikaart = self.driver.find_element(By.XPATH, "//td[contains(text(),'Kiirabikaart nr.')]").find_element(By.TAG_NAME, "a")
         actions = ActionChains(self.driver)
@@ -261,9 +265,24 @@ class Scraper:
                 kiirabiAndmed.hr = i.split(" ")[1]
 
             # Temperatuur
-            if "Temperatuur" in i and len(i.split(" ")) == 4:
+            if "Temperatuur" in i and len(i.split(" ")) == 3:
+                kiirabiAndmed.temp = i.split(" ")[1]
+            elif "Temperatuur" in i and len(i.split(" ")) == 4:
                 kiirabiAndmed.temp = i.split(" ")[2]
-
+        if kiirabiAndmed.resp_quan == INITIAL_VALUE:
+            kiirabiAndmed.resp_quan = None
+        if kiirabiAndmed.resp_qual == INITIAL_VALUE:
+            kiirabiAndmed.resp_qual = None
+        if kiirabiAndmed.spo2 == INITIAL_VALUE:
+            kiirabiAndmed.spo2 = None
+        if kiirabiAndmed.sys == INITIAL_VALUE:
+            kiirabiAndmed.sys = None
+        if kiirabiAndmed.dia == INITIAL_VALUE:
+            kiirabiAndmed.dia = None
+        if kiirabiAndmed.hr == INITIAL_VALUE:
+            kiirabiAndmed.hr = None
+        if kiirabiAndmed.temp == INITIAL_VALUE:
+            kiirabiAndmed.temp = None
         return kiirabiAndmed
     
     def scrape_triaaz(self, emo_data: EmoData) -> EmoData:
@@ -336,10 +355,14 @@ class Scraper:
             sys,dia = bp.split(" / ")
             if sys:
                 data.sys = sys
+                if not data.sys.isnumeric():
+                    data.sys = None
             else:
                 data.sys = None
             if dia:
                 data.dia = dia
+                if not data.dia.isnumeric():
+                    data.dia = None
             else:
                 data.dia = None
 
@@ -371,7 +394,10 @@ class Scraper:
                 'Saatekirja vastus ' : "vastus_saatekiri",
                 'Saatekiri e-konsultatsioonile ' : "e_kons_saatekiri",
                 'Hambaravikaart ' : "hambaravikaart",
-                'Kutse skriiningus osalemiseks ' : "skriining_kutse"
+                'Kutse skriiningus osalemiseks ' : "skriining_kutse",
+                'Saatekiri protseduurile/teenusele ' : "teenus_saatekiri",
+                'Saatekiri analüüsile ' : "analyys_saatekiri",
+                'Eriarstidevaheline konsultatsioon (arst-arst) ' : "erialade_vaheline_saatekiri"
                 }
         kaasatud_tyybid = {"amb", "stats", "paev"}
         diagnosis_set = set()
@@ -394,11 +420,12 @@ class Scraper:
                     allikas = i.get_text()
                 if title_text == "Koostamise aeg":
                     koostamise_date_str = i.get_text().split()[0]
-            if allikas not in digiloo_diag_tyybid:
-                raise UnknownDigiluguTypeError(f"Tüüpi {allikas} ei eksisteeri võimalike tüüpide nimekirjas")
+#            if allikas not in digiloo_diag_tyybid:
+#                raise UnknownDigiluguTypeError(f"Tüüpi {allikas} ei eksisteeri võimalike tüüpide nimekirjas")
             koostamise_date = date(int(koostamise_date_str[6:10]), int(koostamise_date_str[3:5]), int(koostamise_date_str[:2]))
-            if digiloo_diag_tyybid[allikas] in kaasatud_tyybid and koostamise_date < index_date:
-                diagnosis_set.add(rhk)
+            if allikas in digiloo_diag_tyybid:
+                if digiloo_diag_tyybid[allikas] in kaasatud_tyybid and koostamise_date < index_date:
+                    diagnosis_set.add(rhk)
 
         data.kok_astma = self.isDiagnosisKOKAstma(diagnosis_set)
         data.sydamepuudulikkus = self.isDiagnosisSydamepuudulikkus(diagnosis_set)
@@ -431,7 +458,7 @@ class Scraper:
         pneumonia_rhk = {"J12", "J12.0", "J12.1", "J12.2", "J12.8", "J12.9", "J13", "J14", "J15", "J15.0", "J15.1", "J15.2", "J15.3", "J15.4", "J15.5",
                 "J15.6", "J15.7", "J15.8", "J15.9", "J16", "J16.0", "J16.8", "J17", "J17.0", "J17.1", "J17.2", "J17.3", "J17.8", "J18", "J18.0",
                 "J18.1", "J18.2", "J18.8", "J18.9", "J85.1", "J69.0", "J69.1", "J69.8"}
-        pneumotooraks_rhk = {"J93", "J93.0", "J93.1", "J93.8", "J93.9", "S27.0", "S27.2", "J94.2", "A15.0", "A16.0", "A16.2"}
+        pneumotooraks_rhk = {"J93", "J93.0", "J93.1", "J93.8", "J93.9", "J94.", "S27.0", "S27.2", "J94.2", "A15.0", "A16.0", "A16.2"}
         pleuraefusioon_rhk = {"J90", "J94.0", "J91", "J94.2", "J94.8", "S27.1", "S27.2"}
         perikard_rhk = {"I30", "I30.0", "I30.1", "I30.8", "I30.9", "I31.2", "I31.3", "I31.8", "S26.0", "I31.9", "I23.0"}
         mi_rhk = {"I21", "I21.0", "I21.1", "I21.2", "I21.3", "I21.4", "I21.9", "I22", "I22.0", "I22.1", "I22.8", "I22.9"}
@@ -561,8 +588,10 @@ def setup_logger() -> None:
 
 
 def get_redcap_id_list() -> Iterable[int]:
+    return range(731,1001)
+    #return [271]
     #return [2555]
-    return range(540,544)
+    # return range(540,544)
     #return [250,272,290]
     #pass
 
@@ -571,6 +600,333 @@ def get_hj_date(record: Record) -> date:
     hj_number = record.hj_number
     hj_date = date(int(hj_number[:4]), int(hj_number[4:6]), int(hj_number[6:8]))
     return hj_date
+
+def prepare_data(uuritav:Uuritav) -> dict:
+    data = uuritav.data
+    result = {}
+    print("Starting data assembly")
+    # Punane trauma
+    key = "auto_red_trauma___1"
+    if data.emo.red_trauma:
+        result[key] = "1"
+    else:
+        result[key] = "0"
+
+    # Kiirabikaart
+    key = "auto_ph"
+    if data.ph:
+        result[key] = "1"
+
+        #Kvalitatiivne hingamissagedus
+        if data.ph.resp_qual:
+            key = "auto_ph_resp_qual"
+            result[key] = data.ph.resp_qual.value
+            key = "auto_ph_resp_qual_missing___1"
+            result[key] = "0"
+        else:
+            key = "auto_ph_resp_qual_missing___1"
+            result[key] = "1"
+            key = "auto_ph_resp_qual"
+            result[key] = ""
+
+        #Kvantitatiivne hingamissagedus
+        if data.ph.resp_quan:
+            key = "auto_ph_resp_quan"
+            result[key] = data.ph.resp_quan
+            key = "auto_ph_resp_quan_missing___1"
+            result[key] = "0"
+        else:
+            key = "auto_ph_resp_quan_missing___1"
+            result[key] = "1"
+            key = "auto_ph_resp_quan"
+            result[key] = ""
+
+        #SpO2
+        if data.ph.spo2:
+            key = "auto_ph_spo2"
+            result[key] = data.ph.spo2
+            key = "auto_ph_spo2_missing___1"
+            result[key] = "0"
+        else:
+            key = "auto_ph_spo2_missing___1"
+            result[key] = "1"
+            key = "auto_ph_spo2"
+            result[key] = ""
+
+        # Süstoolne vererõhk
+        if data.ph.sys:
+            key = "auto_ph_sys"
+            result[key] = data.ph.sys
+            key = "auto_ph_sys_missing___1"
+            result[key] = "0"
+        else:
+            key = "auto_ph_sys_missing___1"
+            result[key] = "1"
+            key = "auto_ph_sys"
+            result[key] = ""
+
+        # Diastoolne vererõhk
+        if data.ph.dia:
+            key = "auto_ph_dia"
+            result[key] = data.ph.dia
+            key = "auto_ph_dia_missing___1"
+            result[key] = "0"
+        else:
+            key = "auto_ph_dia_missing___1"
+            result[key] = "1"
+            key = "auto_ph_dia"
+            result[key] = ""
+
+        # Pulsisagedus
+        if data.ph.hr:
+            key = "auto_ph_hr"
+            result[key] = data.ph.hr
+            key = "auto_ph_hr_missing___1"
+            result[key] = "0"
+        else:
+            key = "auto_ph_hr_missing___1"
+            result[key] = "1"
+            key = "auto_ph_hr"
+            result[key] = ""
+
+        # Temperatuur
+        if data.ph.temp:
+            key = "auto_ph_temp"
+            result[key] = data.ph.temp
+            key = "auto_ph_temp_missing___1"
+            result[key] = "0"
+        else:
+            key = "auto_ph_temp_missing___1"
+            result[key] = "1"
+            key = "auto_ph_temp"
+            result[key] = ""
+    else:
+        result[key] = "2"
+
+    # Triaažikategooria
+    key = "auto_emo_triage"
+    if data.emo.triage:
+        result[key] = data.emo.triage.value
+    else:
+        result[key] = ""
+
+
+    # Triaažitegija
+    key = "auto_emo_triage_nurse"
+    if data.emo.triage_nurse:
+        result[key] = data.emo.triage_nurse
+    else:
+        result[key] = ""
+
+    #Kvalitatiivne hingamissagedus
+    if data.emo.resp_qual:
+        key = "auto_emo_resp_qual"
+        result[key] = data.emo.resp_qual.value
+        key = "auto_emo_resp_qual_missing___1"
+        result[key] = "0"
+    else:
+        key = "auto_emo_resp_qual_missing___1"
+        result[key] = "1"
+        key = "auto_emo_resp_qual"
+        result[key] = ""
+
+    #Kvantitatiivne hingamissagedus
+    if data.emo.resp_quan:
+        key = "auto_emo_resp_quan"
+        result[key] = data.emo.resp_quan
+        key = "auto_emo_resp_quan_missing___1"
+        result[key] = "0"
+    else:
+        key = "auto_emo_resp_quan_missing___1"
+        result[key] = "1"
+        key = "auto_emo_resp_quan"
+        result[key] = ""
+
+    #SpO2
+    if data.emo.spo2:
+        key = "auto_emo_spo2"
+        result[key] = data.emo.spo2
+        key = "auto_emo_spo2_missing___1"
+        result[key] = "0"
+    else:
+        key = "auto_emo_spo2_missing___1"
+        result[key] = "1"
+        key = "auto_emo_spo2"
+        result[key] = ""
+
+    # Süstoolne vererõhk
+    if data.emo.sys:
+        key = "auto_emo_sys"
+        result[key] = data.emo.sys
+        key = "auto_emo_sys_missing___1"
+        result[key] = "0"
+    else:
+        key = "auto_emo_sys_missing___1"
+        result[key] = "1"
+        key = "auto_emo_sys"
+        result[key] = ""
+
+    # Diastoolne vererõhk
+    if data.emo.dia:
+        key = "auto_emo_dia"
+        result[key] = data.emo.dia
+        key = "auto_emo_dia_missing___1"
+        result[key] = "0"
+    else:
+        key = "auto_emo_dia_missing___1"
+        result[key] = "1"
+        key = "auto_emo_dia"
+        result[key] = ""
+
+    # Pulsisagedus
+    if data.emo.hr:
+        key = "auto_emo_hr"
+        result[key] = data.emo.hr
+        key = "auto_emo_hr_missing___1"
+        result[key] = "0"
+    else:
+        key = "auto_emo_hr_missing___1"
+        result[key] = "1"
+        key = "auto_emo_hr"
+        result[key] = ""
+
+    # Temperatuur
+    if data.emo.temp:
+        key = "auto_emo_temp"
+        result[key] = data.emo.temp
+        key = "auto_emo_temp_missing___1"
+        result[key] = "0"
+    else:
+        key = "auto_emo_temp_missing___1"
+        result[key] = "1"
+        key = "auto_emo_temp"
+        result[key] = ""
+
+    # Anamneesis KOK ja astma
+    if not data.prev_diag.kok_astma and not data.prev_diag.sydamepuudulikkus:
+        key = "auto_earlier_diagnosis___3"
+        result[key] = "1"
+
+    else:
+        if data.prev_diag.kok_astma:
+            key = "auto_earlier_diagnosis___2"
+            result[key] = "1"
+
+        if data.prev_diag.sydamepuudulikkus:
+            key = "auto_earlier_diagnosis___1"
+            result[key] = "1"
+
+    # UHDISK diagnoos
+    if data.diagnosis.uhdisk:
+        key = "auto_uhdisk_exist"
+        result[key] = "1"
+        for i in data.diagnosis.uhdisk_list:
+            key = "auto_uhdisk_diag___" + str(i.value)
+            result[key] = "1"
+    else:
+        key = "auto_uhdisk_exist"
+        result[key] = "2"
+
+    # Mitte-UHDISK diagnoos
+    nud_kohuvalu = {"R10", "R10.0", "R10.1", "R10.2", "R10.3", "R10.4", "A09", "K56", "K56.0", "K56.1", "K56.2", "K56.3", "K56.4", "K56.5", "K56.6", "K56.7"}
+    nud_seljavalu = {"M54", "M51.1", "M54.3", "M54.4", "M54.5", "M54.8", "M54.9"}
+    nud_rindkerevalu = {"R07", "R07.1", "R07.2", "R07.3", "R07.4"}
+    nud_peavalu = {"R51", "G43", "G43.0", "G43.1", "G43.2", "G43.3", "G43.8", "G43.9", "G44", "G44.0", "G44.1", "G44.2", "G44.3", "G44.4", "G44.8", "O29.4", "O74.5", "O89.4"}
+    nud_uroinf = {"N39.0", "N30", "N30.0", "N30.1", "N30.2", "N30.8", "N30.9", "N10", "N11", "N11.0", "N11.1", "N11.8", "N11.9", "N12", "N20.9"}
+    nud_kohuinf = {"K80.1", "K81", "K81.0", "K81.1", "K81.8", "K81.9", "K35", "K35.0", "K35.1", "K35.9", "K36", "K65", "K65.0", "K65.8", "K65.9", "K85", "K86.0", "K86.1"}
+    nud_pehmeinf = {"L03", "L03.0", "L03.1", "L03.2", "L03.3", "L03.8"}
+    nud_muuinf = set()
+    nud_fa = {"I48"}
+    nud_rytm = {"I49", "I49.8", "I49.9"}
+    nud_ajuinf = {"I63", "I63.0", "I63.1", "I63.2", "I63.3", "I63.4", "I63.5", "I63.6", "I63.8", "I63.9", "G45", "G45.0", "G45.1", "G45.2", "G45.8", "G45.9", "I61", "I61.0", "I61.1", "I61.2", "I61.3", "I61.4", "I61.5", "I61.6", "I61.8", "I61.9"}
+    nud_vertigo = {"R42", "H81.1"}
+    nud_synkoop = {"R55", "G90.0", "T67.1"}
+    nud_epilepsia = {"G40", "G40.0", "G40.1", "G40.2", "G40.3", "G40.4", "G40.5", "G40.6", "G40.7", "G40.8", "G40.9"}
+    nud_bp = {"R03.0"}
+    nud_alkohol = {"F10", "F10.0", "F10.00", "F10.01", "F10.02", "F10.03", "F10.04", "F10.05", "F10.06", "F10.07", "F10.1", "F10.2", "F10.20", "F10.21", "F10.22", "F10.23", "F10.24", "F10.25", "F10.26", "F10.3", "F10.30", "F10.31", "F10.4", "F10.40", "F10.41", "F10.5", "F10.50", "F10.51", "F10.52", "F10.53", "F10.54", "F10.55", "F10.56", "F10.6", "F10.7", "F10.70", "F10.71", "F10.72", "F10.73", "F10.74", "F10.75", "F10.8", "F10.9", "Z72.1"}
+    nud_yhtinf = {"J00", "J01", "J01.0", "J01.1", "J01.2", "J01.3", "J01.4", "J01.8", "J01.9", "J02", "J02.0", "J02.8", "J02.9", "J03", "J03.0", "J03.8", "J03.9", "J04", "J04.0", "J04.1", "J04.2", "J05", "J05.0", "J05.1", "J06", "J06.0", "J06.8", "J06.9"}
+    nud_allergia = {"D69.0", "D72.1", "H01.1", "H65.1", "H65.4", "H65.9", "J30", "J30.1", "J30.2", "J30.3", "J30.4", "J45.0", "J67.7", "J67.8", "J67.9", "L20.8", "L23", "L23.0", "L23.1", "L23.2", "L23.3", "L23.4", "L23.5", "L23.6", "L23.7", "L23.8", "L23.9", "L50.0", "L56.1", "M13.8", "M30.1", "T78.2", "T78.4", "T88.7"}
+    nud_oksendamine = {"R11", "F50.5", "P92.0", "K91.0", "O21", "O21.0", "O21.1", "O21.2", "O21.8", "O21.9"}
+    nud_muu = set()
+    nud_giveri = {"K92.0", "K92.1", "K92.2"}
+    nud_kusekivi = {"N20", "N20.0", "N20.1", "N20.2", "N20.9", "N21", "N21.0", "N21.1", "N21.8", "N21.9", "N22", "N22.0", "N22.8", "N23"}
+    nud_gyn = {"O20", "O20.0", "O20.8", "O20.9"}
+    nud_protseduur = {"R33"}
+    nud = (nud_kohuvalu, nud_seljavalu, nud_rindkerevalu, nud_peavalu, nud_uroinf, nud_kohuinf, nud_pehmeinf, nud_muuinf, nud_fa, nud_rytm, nud_ajuinf, nud_vertigo, nud_synkoop, nud_epilepsia, nud_bp, nud_alkohol, nud_yhtinf, nud_allergia, nud_oksendamine, nud_muu, nud_giveri, nud_kusekivi, nud_gyn, nud_protseduur)
+    for index, diagnosis in enumerate(nud, start=1):
+        key = "auto_non_uhdisk_diag___" + str(index)
+        if diagnosis & data.diagnosis.diagnosis_list:
+            result[key] = "1"
+        else:
+            result[key] = "0"
+
+    # Covid 19
+    covid_diag = {"U07.1", "U07.2"}
+    key = "auto_diag_covid"
+    if covid_diag & data.diagnosis.diagnosis_list:
+        result[key] = "1"
+    else:
+        result[key] = "2"
+
+
+    # Hospitaliseerimine
+    if data.hospitalisation:
+        key = "auto_hospitalised"
+        result[key] = "1"
+        # Hospitaliseerimise kestus
+        key = "auto_hospitalised_duration"
+        result[key] = data.hospitalisation.hospitalised_duration
+
+        # Intensiivravi vajadus
+        if data.hospitalisation.icu:
+            key = "auto_icu"
+            result[key] = "1"
+            key = "auto_icu_duration"
+            result[key] = data.hospitalisation.icu_duration
+        else:
+            key = "auto_icu"
+            result[key] = "2"
+            key = "auto_icu_duration"
+            result[key] = ""
+
+        # Surm haiglas
+        key = "auto_hospitalised_death"
+        if data.hospitalisation.hospitalised_death:
+            result[key] = "1"
+        else:
+            result[key] = "2"
+    else:
+        key = "auto_hospitalised"
+        result[key] = "2"
+        key = "auto_hospitalised_duration"
+        result[key] = ""
+        key = "auto_icu"
+        result[key] = "2"
+        key = "auto_icu_duration"
+        result[key] = ""
+
+
+    key = "automaatkontroll_complete"
+    result[key] = "1"
+    return result
+
+
+
+
+def upload_data(uuritav: Uuritav) -> None:
+    rc_id = uuritav.rc_id
+    project = uuritav.record.project
+    print("Preparing data")
+    result = prepare_data(uuritav)
+    result["record_id"] = rc_id
+    print("Starting upload")
+    project.import_records([{"record_id" : rc_id, "auto_status" : 2}])
+    project.import_records([result])
+    project.import_records([{"record_id" : rc_id, "auto_status" : 3}])
+    print("Upload complete")
+    
+
+
 
 def main():
     try:
@@ -583,7 +939,7 @@ def main():
         log_in()
         for rc_id in redcap_id_list:
             uuritav = Uuritav(rc_id)
-            # Upload to redcap?
+            upload_data(uuritav)
     except Exception as e:
         logging.exception(e)
         raise
