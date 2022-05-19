@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 from redcap import Project, RedcapError
+from ehlredcap import RedcapConnection
 import tkinter as tk
 import ehlNavigeerimine
 import os
@@ -43,27 +44,6 @@ def get_version():
     except IOError:
         logging.error(f"Fail {VERSION_FILENAME} ei eksisteeri.")
 
-def redcap_connect():
-    URL = "https://redcap.ut.ee/api/"
-
-    try:
-        fail = open(REDCAP_KEY_FILENAME, "r")
-        api_key = fail.read().strip()
-    except IOError:
-        logging.error(f"RedCapi API Key fail '{REDCAP_KEY_FILENAME}' puudub töökaustast. Loome uue faili.")
-        return None
-
-    if len(api_key) != 32:
-        logging.error("API Key ei ole õige pikkusega.")
-        return None
-
-    try:
-        project = Project(URL, api_key)
-    except RedcapError:
-        logging.error("Antud RedCapi API key ei võimalda andmebaasile ligipääsu.")
-        return None
-
-    return project
 
 def redcap_create_api_key():
     root = tk.Tk()
@@ -294,7 +274,8 @@ if __name__ == "__main__":
     # Viime aktiivse töökausta faili asukohta, et lisafailid oleks leitavad
     os.chdir(os.path.dirname(sys.argv[0]))
 
-    project = initiate_redcap()
+    #project = initiate_redcap()
+    rc = RedcapConnection(url="https://redcap.ut.ee/api/", api_key_path="redcap_api_key")
 
     record_manager = RecordManager(project)
     ehl = ehlNavigeerimine.ehlMain()

@@ -112,13 +112,13 @@ class ehlMain:
         opsys = platform.system()
         if opsys == "Linux":
             logging.info("OS Linux")
-            return "./chromedriver/chromedriver_linux"
+            return "../chromedriver/chromedriver_linux"
         elif opsys == "Windows":
             logging.info("OS Windows")
-            return "./chromedriver/chromedriver_windows.exe"
+            return "../chromedriver/chromedriver_windows.exe"
         elif opsys == "Darwin":
             logging.info("OS Mac")
-            return "./chromedriver/chromedriver_mac"
+            return "../chromedriver/chromedriver_mac"
         else:
             logging.info("Operating system not supported")
         
@@ -680,7 +680,7 @@ class ehlMain:
             element = self.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[2]/hc-navbar-filter/div/div/div[3]/div/span/form/div[2]/div/button", "Otsi nupp", clickable=True)
             element.click()
         except TimeoutException:
-            return 0
+            raise
         finally:
             self.driver.switch_to.default_content()
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 from ehl_assistant import RecordManager, REDCAP_KEY_FILENAME, initiate_redcap, redcap_retrieve_remote, login_window
-from redcap import Project, RedcapError
+from ehlredcap import RedcapConnection
 from ehlNavigeerimine import ehlMain
 from time import sleep
 from dataclasses import dataclass, field
@@ -9,6 +9,7 @@ from enum import Enum, auto
 from typing import List, Iterable, Set
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 import logging
 from datetime import date
@@ -46,21 +47,17 @@ class uhdisk_diag(Enum):
 
 @dataclass
 class Record:
+    rc : RedcapConnection
     rc_id : int
     isikukood : int = None
     hj_number : str = None
-    project: Project = None
 
     def __post_init__(self):
         self.fill_nav_data()
 
     def fill_nav_data(self):
         """ Tõmbab redcapist alla uuritava isikukoodi ja HJ info ja paneb selle instantsi atribuutidesse """
-        self.project = initiate_redcap()
-        if self.project == None:
-            logging.error("RedCap andmebaasiga ühendumine ebaõnnestus")
-            raise RedcapError
-        record = redcap_retrieve_remote(self.project, self.rc_id)[0]
+        record = self.rc.download(self.rc_id, fields = ("id_code", "ref_num"))
         self.isikukood = record["id_code"]
         self.hj_number = record["ref_num"]
 
@@ -550,18 +547,19 @@ class Scraper:
     
 @dataclass
 class Uuritav:
+    rc : RedcapConnection
     rc_id : int
     record : Record = field(init=False)
     data : UuritavData = field(default_factory=UuritavData)
     scraper : Scraper = field(default_factory=Scraper)
     
     def __post_init__(self) -> None:
-        self.record = Record(self.rc_id)
+        self.record = Record(self.rc, self.rc_id)
         self.index_date = get_hj_date(self.record)
 
+        print(self.rc_id)
         self.ehl_navigate()
         self.scrape_data()
-        print(self)
 
     def scrape_data(self) -> None:
         self.data.diagnosis = self.scraper.scrape_hj_diagnoosid(self.data.diagnosis)
@@ -587,8 +585,10 @@ def setup_logger() -> None:
     selenium_logger.disabled = True
 
 
-def get_redcap_id_list() -> Iterable[int]:
-    return range(731,1001)
+def get_redcap_id_list(rc: RedcapConnection) -> Iterable[int]:
+    result =  rc.get_id({"foreigner":["2"], "auto_status": ["", "1", "2"], "taustainfo_complete":["1"]})
+    return result
+    #return range(731,1001)
     #return [271]
     #return [2555]
     # return range(540,544)
@@ -604,7 +604,7 @@ def get_hj_date(record: Record) -> date:
 def prepare_data(uuritav:Uuritav) -> dict:
     data = uuritav.data
     result = {}
-    print("Starting data assembly")
+    logging.info("Starting data assembly")
     # Punane trauma
     key = "auto_red_trauma___1"
     if data.emo.red_trauma:
@@ -816,6 +816,11 @@ def prepare_data(uuritav:Uuritav) -> dict:
             key = "auto_earlier_diagnosis___1"
             result[key] = "1"
 
+    # Kõik diagnoosid
+    if data.diagnosis.diagnosis_list:
+        key = "auto_diag"
+        result[key] = str(data.diagnosis.diagnosis_list)
+
     # UHDISK diagnoos
     if data.diagnosis.uhdisk:
         key = "auto_uhdisk_exist"
@@ -913,17 +918,16 @@ def prepare_data(uuritav:Uuritav) -> dict:
 
 
 
-def upload_data(uuritav: Uuritav) -> None:
+def upload_data(rc: RedcapConnection, uuritav: Uuritav) -> None:
     rc_id = uuritav.rc_id
-    project = uuritav.record.project
-    print("Preparing data")
+    logging.info("Preparing data")
     result = prepare_data(uuritav)
     result["record_id"] = rc_id
-    print("Starting upload")
-    project.import_records([{"record_id" : rc_id, "auto_status" : 2}])
-    project.import_records([result])
-    project.import_records([{"record_id" : rc_id, "auto_status" : 3}])
-    print("Upload complete")
+    logging.info("Starting upload")
+    rc.upload({"record_id" : rc_id, "auto_status" : 2}, overwrite=True)
+    rc.upload(result, confirm=False)
+    rc.upload({"record_id" : rc_id, "auto_status" : 3, "automaatkontroll_complete" : "1"}, overwrite=True)
+    logging.info("Upload complete")
     
 
 
@@ -935,11 +939,16 @@ def main():
         ehl = ehlMain()
         ehl.ava()
         #login_window("eHL Scraper")
-        redcap_id_list = get_redcap_id_list()
+        rc = RedcapConnection(url="https://redcap.ut.ee/api/", api_key_path="../redcap_api_key")
         log_in()
-        for rc_id in redcap_id_list:
-            uuritav = Uuritav(rc_id)
-            upload_data(uuritav)
+        while True:
+            try:
+                redcap_id_list = get_redcap_id_list(rc)
+                for rc_id in redcap_id_list:
+                    uuritav = Uuritav(rc, rc_id)
+                    upload_data(rc, uuritav)
+            except TimeoutException:
+                continue
     except Exception as e:
         logging.exception(e)
         raise
