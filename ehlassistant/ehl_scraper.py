@@ -9,7 +9,7 @@ from enum import Enum, auto
 from typing import List, Iterable, Set
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 from bs4 import BeautifulSoup
 import logging
 from datetime import date
@@ -954,7 +954,7 @@ def main():
                 for rc_id in redcap_id_list:
                     uuritav = Uuritav(rc, rc_id)
                     upload_data(rc, uuritav)
-            except TimeoutException:
+            except (TimeoutException, StaleElementReferenceException):
                 redcap_id_list.pop(0)
                 continue
     except Exception as e:
