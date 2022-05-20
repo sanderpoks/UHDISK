@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, ElementNotInteractableException, NoSuchElementException, JavascriptException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, ElementNotInteractableException, NoSuchElementException, JavascriptException, StaleElementReferenceException
 from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import pandas as pd
@@ -205,6 +205,11 @@ class ehlMain:
                 continue
             except TimeoutException:
                 logging.error("ERROR: TimeoutException")
+                raise
+                sleep(timeout)
+                continue
+            except StaleElementReferenceException:
+                logging.error("ERROR: StaleElementReferenceException")
                 sleep(timeout)
                 continue
             else: # Erroreid ei esinenud, lõpetame navigeerimise
@@ -357,7 +362,9 @@ class ehlMain:
 
         #Kui lugu olemas, siis scrolli ja ava see
         if not self.element_exists(By.LINK_TEXT, str(hj_number), "Haigusjuhu number"):
-            return
+            print("Ei leia haiguslugu")
+            sleep(5)
+            print("Proovin uuesti")
 
         lugu = self.get_element(By.LINK_TEXT, str(hj_number), "Haigusjuhu number")
         actions = ActionChains(self.driver)
@@ -381,7 +388,7 @@ class ehlMain:
         try:  # ootame kuni javascript menüü ilmub nähtavale
             self.get_element(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö")
         except TimeoutException:
-            return 0 #Põhjust ei olnud vaja sisestada
+            sleep(5)
 
         if self.element_exists(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö"):
             element = self.get_element(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö")

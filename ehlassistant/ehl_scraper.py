@@ -941,13 +941,14 @@ def main():
         #login_window("eHL Scraper")
         rc = RedcapConnection(url="https://redcap.ut.ee/api/", api_key_path="../redcap_api_key")
         log_in()
+        redcap_id_list = get_redcap_id_list(rc)
         while True:
             try:
-                redcap_id_list = get_redcap_id_list(rc)
                 for rc_id in redcap_id_list:
                     uuritav = Uuritav(rc, rc_id)
                     upload_data(rc, uuritav)
             except TimeoutException:
+                redcap_id_list.pop(0)
                 continue
     except Exception as e:
         logging.exception(e)
