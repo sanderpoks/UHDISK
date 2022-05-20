@@ -285,7 +285,13 @@ class Scraper:
     def scrape_triaaz(self, emo_data: EmoData) -> EmoData:
         data = emo_data
         ehl.navigeeri("triaaz")
+
         # Triaažikategooria
+        if not ehl.element_exists(By.XPATH,'//*[@id="application-main-content"]/div[2]/div[2]/span[2]', "Triaažikategooria"):
+            data.triage = triaaz.PUUDUB
+            data.triage_nurse = data.triage_subtype = data.resp_qual = data.resp_quan = data.spo2 = data.sys = data.dia = data.hr = data.temp = None
+            print("Patsiendil pole triaaži tehtud")
+            return data
         triaazi_varv = ehl.get_element(By.XPATH,'//*[@id="application-main-content"]/div[2]/div[2]/span[2]', "Triaažikategooria").text
         if "punane" in triaazi_varv:
             data.triage = triaaz.PUNANE
@@ -558,6 +564,7 @@ class Uuritav:
         self.index_date = get_hj_date(self.record)
 
         print(self.rc_id)
+        logging.info(f"### Alustan scrapemist - {self.rc_id} ###")
         self.ehl_navigate()
         self.scrape_data()
 

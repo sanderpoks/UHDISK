@@ -351,26 +351,25 @@ class ehlMain:
         element.click()
 
         #Ootame kuni laeb ja siis avame kõik haigusjuhud:
-        try:
-            self.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki")
-        except TimeoutException:
-            return
         
         element = self.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki", clickable=True)
         element.click()
         sleep(1)
 
         #Kui lugu olemas, siis scrolli ja ava see
-        if not self.element_exists(By.LINK_TEXT, str(hj_number), "Haigusjuhu number"):
-            print("Ei leia haiguslugu")
-            sleep(5)
-            print("Proovin uuesti")
+        while True:
+            if not self.element_exists(By.LINK_TEXT, str(hj_number), "Haigusjuhu number"):
+                print("Ei leia haiguslugu")
+                sleep(5)
+                print("Proovin uuesti")
 
-        lugu = self.get_element(By.LINK_TEXT, str(hj_number), "Haigusjuhu number")
-        actions = ActionChains(self.driver)
-        # Scrollime lehel otsitava elemendini
-        actions.move_to_element(lugu).click().perform()
-        self.andmete_vaatamise_pohjendus()
+            lugu = self.get_element(By.LINK_TEXT, str(hj_number), "Haigusjuhu number")
+            actions = ActionChains(self.driver)
+            # Scrollime lehel otsitava elemendini
+            actions.move_to_element(lugu).click().perform()
+            if self.andmete_vaatamise_pohjendus():
+                return
+            print("Teadustöö akent ei tekkinud, proovin uuesti")
         return
 
     def lisa_isik_registrisse(self):
@@ -384,19 +383,19 @@ class ehlMain:
         element.click()
         return
 
-    def andmete_vaatamise_pohjendus(self):
-        try:  # ootame kuni javascript menüü ilmub nähtavale
-            self.get_element(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö")
-        except TimeoutException:
-            sleep(5)
+    def andmete_vaatamise_pohjendus(self) -> bool:
 
-        if self.element_exists(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö"):
-            element = self.get_element(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö")
-            element.click()
-            element = self.get_element(By.XPATH, "//input[@value='Jätka']", 'Nupp "Jätka"', clickable=True)
-            element.click()
-        #Andmete vaatamise põhjendus oli vajalik funktsioon tagastab 1
-        return 1
+        while True:
+            first_attempt = True
+            if self.element_exists(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö"):
+                element = self.get_element(By.ID, "o.f0.form.accessReason-SCIENTIFIC_RESEARCH", "Teadustöö")
+                element.click()
+                element = self.get_element(By.XPATH, "//input[@value='Jätka']", 'Nupp "Jätka"', clickable=True)
+                element.click()
+                return True
+            else:
+                sleep(1)
+                return False
 
     def ava_menyy_alajaotis(self, valik):
 
