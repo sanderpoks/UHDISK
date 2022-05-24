@@ -489,6 +489,8 @@ class Scraper:
             tabel = ehl.get_element(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f0.detailedEpicrisisModificationWidget._FINAL_DIAGNOSIS.list_listUpdate"]', "Diagnooside tabel").get_attribute('innerHTML')
         except TimeoutException:
             print("Epikriisi diagnoose ei ole")
+            data.uhdisk = False
+            data.diagnosis_list = set()
             return data
 
         soup = BeautifulSoup(tabel, "html.parser")
@@ -499,6 +501,7 @@ class Scraper:
                     diagnoses.add(element_line[2].get_text().strip())
         if diagnoses & uhdisk_diagnoses:
             data.uhdisk = True
+            data.uhdisk_list = set()
         else:
             data.uhdisk = False
         data.diagnosis_list = diagnoses
