@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 from ehl_assistant import RecordManager, REDCAP_KEY_FILENAME, initiate_redcap, redcap_retrieve_remote, login_window
 from ehlredcap import RedcapConnection
-from ehlNavigeerimine import ehlMain
+from ehlNavigeerimine import ehlMain, SidumataIsikukoodError
 from time import sleep
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -13,6 +13,7 @@ from selenium.common.exceptions import TimeoutException, StaleElementReferenceEx
 from bs4 import BeautifulSoup
 import logging
 from datetime import date
+from ehlreorder import order_sequence
 
 APP_TITLE = "eHL Scraper"
 INITIAL_VALUE = object()
@@ -408,7 +409,18 @@ class Scraper:
         ehl.navigeeri("digilugu_diagnoosid")
         element = ehl.get_element(By.ID, "angularIframe", "Iframe")
         self.driver.switch_to.frame(element)
-        element = ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[2]/div/div/table/thead/tr[1]/th/a", "Kõik kirjed", clickable=True)
+
+        try:
+            element = ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[2]/div/div/table/thead/tr[1]/th/a", "Kõik kirjed", clickable=True)
+        except TimeoutException:
+            element = ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[1]/div/h2/span", "Diagnooside arv")
+            if element.text == 'Diagnoosid&nbsp;(0)':
+                print("Tühi digilugu")
+                data.kok_astma = False
+                data.sydamepuudulikkus = False
+                self.driver.switch_to.default_content()
+                return data
+
         element.click()
         element = ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[2]/div/div/table/tbody", "Diagnooside tabel")
         html_text = element.get_attribute('innerHTML')
@@ -472,7 +484,13 @@ class Scraper:
         diagnoses = set()
         if not ehl.element_exists(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f0.detailedEpicrisisModificationWidget._FINAL_DIAGNOSIS.list_listUpdate"]', "Diagnooside tabel"):
             ehl.navigeeri("Epikriis")
-        tabel = ehl.get_element(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f0.detailedEpicrisisModificationWidget._FINAL_DIAGNOSIS.list_listUpdate"]', "Diagnooside tabel").get_attribute('innerHTML')
+
+        try:
+            tabel = ehl.get_element(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f0.detailedEpicrisisModificationWidget._FINAL_DIAGNOSIS.list_listUpdate"]', "Diagnooside tabel").get_attribute('innerHTML')
+        except TimeoutException:
+            print("Epikriisi diagnoose ei ole")
+            return data
+
         soup = BeautifulSoup(tabel, "html.parser")
         for row in soup.findAll("tr"):
             if len(row.get_text(strip=True)) != 0:
@@ -512,7 +530,11 @@ class Scraper:
                 "AITI - 2. intensiivravi",
                 "AIKI - 3. intensiivravi"}
         #ehl.navigeeri("Epikriis") #Eeldame, et oleme juba sel hetkel epikriisis
-        element = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td', "Väljakirjutamise staatus")
+        try:
+            element = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td', "Väljakirjutamise staatus")
+        except TimeoutException:
+            print("Kuna epikriisi pole, ei saa ka haiglaravi kestuse infot")
+            return None
         staatus = element.text
         if staatus == "Surm":
             data.hospitalised_death = True
@@ -593,7 +615,14 @@ def setup_logger() -> None:
 
 
 def get_redcap_id_list(rc: RedcapConnection) -> Iterable[int]:
-    result =  rc.get_id({"foreigner":["2"], "auto_status": ["", "1", "2"], "taustainfo_complete":["1"]})
+    result =  rc.get_id({"foreigner":["2"], "auto_status": ["", "1", "2"]})#, "taustainfo_complete":["1"]})
+#    result.pop(0)
+#    result.pop(0)
+#    result.pop(0)
+#    result.pop(0)
+#    result.pop(0)
+#    result.pop(0)
+    result = order_sequence(result)
     return result
     #return range(731,1001)
     #return [271]
@@ -954,9 +983,15 @@ def main():
                 for rc_id in redcap_id_list:
                     uuritav = Uuritav(rc, rc_id)
                     upload_data(rc, uuritav)
+                    continue
             except (TimeoutException, StaleElementReferenceException):
                 redcap_id_list.pop(0)
                 continue
+            except SidumataIsikukoodError:
+                rc.upload({"auto_status":"5"}, redcap_id=rc_id)
+                redcap_id_list.pop(0)
+                continue
+            break
     except Exception as e:
         logging.exception(e)
         raise

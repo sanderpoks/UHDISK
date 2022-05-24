@@ -17,6 +17,9 @@ import logging
 
 HIGHLIGHTS_FILE = "./highlights"
 
+class SidumataIsikukoodError(Exception):
+    pass
+
 
 class ehlMain:
     
@@ -317,11 +320,7 @@ class ehlMain:
         #Muudame arvelduse menüü nähtavaks
         element = self.get_element(By.XPATH, '//*[@id="nav01"]/a/strong', 'Tab "Registrid"', clickable=True)
         element.click()
-        try:
-            self.get_element(By.LINK_TEXT, "Patsiendid", 'Menüüvalik "Patsiendid"')
-        except TimeoutException:
-            #Script ei laadinud piisavalt kiirelt, funktsioon lõpetab
-            return
+        self.get_element(By.LINK_TEXT, "Patsiendid", 'Menüüvalik "Patsiendid"')
 
         #Valime menüüst "haiguslugude otsimine"
         element = self.get_element(By.LINK_TEXT, "Patsiendid", 'Menüüvalik "Patsiendid"', clickable=True)
@@ -378,6 +377,7 @@ class ehlMain:
         try:
             self.get_element(By.XPATH, "//button[@arn-evntid='complete']", 'Nupp "Valmis"')
         except TimeoutException:
+            raise SidumataIsikukoodError
             return
         element = self.get_element(By.XPATH, "//button[@arn-evntid='complete']", 'Nupp "Valmis"')
         element.click()

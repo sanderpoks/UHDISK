@@ -62,6 +62,10 @@ class RedcapConnection:
         result = result[0]
         return result
 
+    def download_multiple(self, redcap_id_list: list, fields: Optional[list] = None) -> list:
+        """ Laeb RedCapi serverist alla mitme uuritava infoväljad. """
+        result =  self.project.export_records(records=redcap_id_list, fields=fields, export_data_access_groups=True)
+        return result
 
     def upload(self, data: dict, redcap_id: int = None, confirm: bool = True, overwrite: bool = False):
         if redcap_id == None:
@@ -70,21 +74,39 @@ class RedcapConnection:
         if confirm or not overwrite:
             original_data = self.download(redcap_id)
         for key in data:
+            # If key is a checkbox, then 0 is empty value
+            if "___" in key: # Checkboxes have the string "___number" in them
+                if original_data[key] == "0": # Unchecked checkbox
+                    original_data[key] = ""
+                if data[key] == "0":
+                    data[key] = ""
             # If there already is data
             if str(original_data[key]) == str(data[key]):
                 # No need to write in new data, as nothing is different
+                logging.info(f"D - {key}:\t{original_data[key]} : {data[key]}")
                 continue
             # If there is no data to overwrite, then just write the new data in
             if original_data[key] == "":
                 final_data[key] = data[key]
+                logging.info(f"I - {key}:\t{original_data[key]} : {data[key]}")
                 continue
             if overwrite: # If overwrite is true, then just write over the original data
                 final_data[key] = data[key]
+                logging.info(f"O - {key}:\t{original_data[key]} : {data[key]}")
                 continue
             else: # If we don't want to blindly overwrite
                 if confirm:
                     if self.ask_confirm(redcap_id, key, original_data[key], data[key]): # If user wants to overwrite
                         final_data[key] = data[key]
+                        logging.info(f"A - {key}:\t{original_data[key]} : {data[key]}")
+                        continue
+                else: # No confirm - leave original
+                    logging.info(f"X - {key}:\t{original_data[key]} : {data[key]}") # Unhandled case
+                    continue
+        
+            logging.info(f"U - {key}:\t{original_data[key]} : {data[key]}") # Unhandled case
+            raise Exception
+
         if "record_id" not in final_data:
             final_data["record_id"] = redcap_id
         self.project.import_records([final_data])
