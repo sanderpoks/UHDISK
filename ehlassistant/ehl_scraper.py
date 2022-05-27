@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 import logging
 from datetime import date
 from ehlreorder import order_sequence
+import pickle
 
 APP_TITLE = "eHL Scraper"
 INITIAL_VALUE = object()
@@ -619,6 +620,7 @@ def setup_logger() -> None:
 
 def get_redcap_id_list(rc: RedcapConnection) -> Iterable[int]:
     result =  rc.get_id({"foreigner":["2"], "auto_status": ["", "1", "2"]})#, "taustainfo_complete":["1"]})
+    #result = [1963]
 #    result.pop(0)
 #    result.pop(0)
 #    result.pop(0)
@@ -872,37 +874,14 @@ def prepare_data(uuritav:Uuritav) -> dict:
         result[key] = "2"
 
     # Mitte-UHDISK diagnoos
-    nud_kohuvalu = {"R10", "R10.0", "R10.1", "R10.2", "R10.3", "R10.4", "A09", "K56", "K56.0", "K56.1", "K56.2", "K56.3", "K56.4", "K56.5", "K56.6", "K56.7"}
-    nud_seljavalu = {"M54", "M51.1", "M54.3", "M54.4", "M54.5", "M54.8", "M54.9"}
-    nud_rindkerevalu = {"R07", "R07.1", "R07.2", "R07.3", "R07.4"}
-    nud_peavalu = {"R51", "G43", "G43.0", "G43.1", "G43.2", "G43.3", "G43.8", "G43.9", "G44", "G44.0", "G44.1", "G44.2", "G44.3", "G44.4", "G44.8", "O29.4", "O74.5", "O89.4"}
-    nud_uroinf = {"N39.0", "N30", "N30.0", "N30.1", "N30.2", "N30.8", "N30.9", "N10", "N11", "N11.0", "N11.1", "N11.8", "N11.9", "N12", "N20.9"}
-    nud_kohuinf = {"K80.1", "K81", "K81.0", "K81.1", "K81.8", "K81.9", "K35", "K35.0", "K35.1", "K35.9", "K36", "K65", "K65.0", "K65.8", "K65.9", "K85", "K86.0", "K86.1"}
-    nud_pehmeinf = {"L03", "L03.0", "L03.1", "L03.2", "L03.3", "L03.8"}
-    nud_muuinf = set()
-    nud_fa = {"I48"}
-    nud_rytm = {"I49", "I49.8", "I49.9"}
-    nud_ajuinf = {"I63", "I63.0", "I63.1", "I63.2", "I63.3", "I63.4", "I63.5", "I63.6", "I63.8", "I63.9", "G45", "G45.0", "G45.1", "G45.2", "G45.8", "G45.9", "I61", "I61.0", "I61.1", "I61.2", "I61.3", "I61.4", "I61.5", "I61.6", "I61.8", "I61.9"}
-    nud_vertigo = {"R42", "H81.1"}
-    nud_synkoop = {"R55", "G90.0", "T67.1"}
-    nud_epilepsia = {"G40", "G40.0", "G40.1", "G40.2", "G40.3", "G40.4", "G40.5", "G40.6", "G40.7", "G40.8", "G40.9"}
-    nud_bp = {"R03.0"}
-    nud_alkohol = {"F10", "F10.0", "F10.00", "F10.01", "F10.02", "F10.03", "F10.04", "F10.05", "F10.06", "F10.07", "F10.1", "F10.2", "F10.20", "F10.21", "F10.22", "F10.23", "F10.24", "F10.25", "F10.26", "F10.3", "F10.30", "F10.31", "F10.4", "F10.40", "F10.41", "F10.5", "F10.50", "F10.51", "F10.52", "F10.53", "F10.54", "F10.55", "F10.56", "F10.6", "F10.7", "F10.70", "F10.71", "F10.72", "F10.73", "F10.74", "F10.75", "F10.8", "F10.9", "Z72.1"}
-    nud_yhtinf = {"J00", "J01", "J01.0", "J01.1", "J01.2", "J01.3", "J01.4", "J01.8", "J01.9", "J02", "J02.0", "J02.8", "J02.9", "J03", "J03.0", "J03.8", "J03.9", "J04", "J04.0", "J04.1", "J04.2", "J05", "J05.0", "J05.1", "J06", "J06.0", "J06.8", "J06.9"}
-    nud_allergia = {"D69.0", "D72.1", "H01.1", "H65.1", "H65.4", "H65.9", "J30", "J30.1", "J30.2", "J30.3", "J30.4", "J45.0", "J67.7", "J67.8", "J67.9", "L20.8", "L23", "L23.0", "L23.1", "L23.2", "L23.3", "L23.4", "L23.5", "L23.6", "L23.7", "L23.8", "L23.9", "L50.0", "L56.1", "M13.8", "M30.1", "T78.2", "T78.4", "T88.7"}
-    nud_oksendamine = {"R11", "F50.5", "P92.0", "K91.0", "O21", "O21.0", "O21.1", "O21.2", "O21.8", "O21.9"}
-    nud_muu = set()
-    nud_giveri = {"K92.0", "K92.1", "K92.2"}
-    nud_kusekivi = {"N20", "N20.0", "N20.1", "N20.2", "N20.9", "N21", "N21.0", "N21.1", "N21.8", "N21.9", "N22", "N22.0", "N22.8", "N23"}
-    nud_gyn = {"O20", "O20.0", "O20.8", "O20.9"}
-    nud_protseduur = {"R33"}
-    nud = (nud_kohuvalu, nud_seljavalu, nud_rindkerevalu, nud_peavalu, nud_uroinf, nud_kohuinf, nud_pehmeinf, nud_muuinf, nud_fa, nud_rytm, nud_ajuinf, nud_vertigo, nud_synkoop, nud_epilepsia, nud_bp, nud_alkohol, nud_yhtinf, nud_allergia, nud_oksendamine, nud_muu, nud_giveri, nud_kusekivi, nud_gyn, nud_protseduur)
-    for index, diagnosis in enumerate(nud, start=1):
-        key = "auto_non_uhdisk_diag___" + str(index)
-        if diagnosis & data.diagnosis.diagnosis_list:
-            result[key] = "1"
+    rhk_diagnoses = pickle.load(open("ehlassistant/diagnoses_rhk.pickle", "rb"))
+    for index in range(1,25):
+        key = "non_uhdisk_diag___" + str(index)
+        auto_key = "auto_" + key
+        if rhk_diagnoses[key] & data.diagnosis.diagnosis_list:
+            result[auto_key] = "1"
         else:
-            result[key] = "0"
+            result[auto_key] = "0"
 
     # Covid 19
     covid_diag = {"U07.1", "U07.2"}
@@ -978,7 +957,7 @@ def main():
         ehl = ehlMain()
         ehl.ava()
         #login_window("eHL Scraper")
-        rc = RedcapConnection(url="https://redcap.ut.ee/api/", api_key_path="../redcap_api_key")
+        rc = RedcapConnection(url="https://redcap.ut.ee/api/", api_key_path="redcap_api_key")
         log_in()
         redcap_id_list = get_redcap_id_list(rc)
         while True:

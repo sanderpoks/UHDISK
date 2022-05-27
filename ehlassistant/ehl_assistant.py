@@ -7,8 +7,8 @@ import os
 import sys
 import logging
 
-REDCAP_KEY_FILENAME = "redcap_api_key"
-VERSION_FILENAME = "./version"
+REDCAP_KEY_FILENAME = "../redcap_api_key"
+VERSION_FILENAME = "../version"
 APP_TITLE = "ehL Helper"
 
 class TkErrorCatcher:
@@ -275,7 +275,7 @@ if __name__ == "__main__":
     os.chdir(os.path.dirname(sys.argv[0]))
 
     #project = initiate_redcap()
-    rc = RedcapConnection(url="https://redcap.ut.ee/api/", api_key_path="redcap_api_key")
+    rc = RedcapConnection(url="https://redcap.ut.ee/api/", api_key_path="../redcap_api_key")
 
     record_manager = RecordManager(project)
     ehl = ehlNavigeerimine.ehlMain()

@@ -68,6 +68,9 @@ class RedcapConnection:
         return result
 
     def upload(self, data: dict, redcap_id: int = None, confirm: bool = True, overwrite: bool = False):
+#        print("UPLOAD IMMINENT")
+#        print(data)
+#        input() # Pausing for input before continuing
         if redcap_id == None:
             redcap_id = data["record_id"]
         final_data = {}
@@ -76,10 +79,10 @@ class RedcapConnection:
         for key in data:
             # If key is a checkbox, then 0 is empty value
             if "___" in key: # Checkboxes have the string "___number" in them
-                if original_data[key] == "0": # Unchecked checkbox
-                    original_data[key] = ""
-                if data[key] == "0":
-                    data[key] = ""
+                if original_data[key] == "": # Unchecked checkbox
+                    original_data[key] = "0"
+                if data[key] == "":
+                    data[key] = "0"
             # If there already is data
             if str(original_data[key]) == str(data[key]):
                 # No need to write in new data, as nothing is different
@@ -100,6 +103,8 @@ class RedcapConnection:
                         final_data[key] = data[key]
                         logging.info(f"A - {key}:\t{original_data[key]} : {data[key]}")
                         continue
+                    else:
+                        continue
                 else: # No confirm - leave original
                     logging.info(f"X - {key}:\t{original_data[key]} : {data[key]}") # Unhandled case
                     continue
@@ -109,9 +114,16 @@ class RedcapConnection:
 
         if "record_id" not in final_data:
             final_data["record_id"] = redcap_id
-        self.project.import_records([final_data])
+        result =  self.project.import_records([final_data])["count"]
+        if result != 1:
+            print(f"Result from upload is {result} with type {type(result)}")
+            raise Exception("Upload failure")
 
     def ask_confirm(self, redcap_id, key, original, modified):
+        if key == "quality___1": # Kvaliteedikontrolli märgis läheb alati läbi
+            return True
+        if key.startswith("auto_"):
+            return True
         print(f"RC: {redcap_id}, Key:\t {key}")
         print(f"Original:\t {original}")
         print(f"Modified:\t {modified}")

@@ -12,7 +12,7 @@ import datetime
 import csv
 from redcap import Project, RedcapError
 import platform
-from login_data import UURIJA_ISIKUKOOD, UURIJA_TELEFON, SISSELOGIMISE_VIIS
+from ehlassistant.login_data import UURIJA_ISIKUKOOD, UURIJA_TELEFON, SISSELOGIMISE_VIIS
 import logging
 
 HIGHLIGHTS_FILE = "./highlights"
@@ -115,13 +115,13 @@ class ehlMain:
         opsys = platform.system()
         if opsys == "Linux":
             logging.info("OS Linux")
-            return "../chromedriver/chromedriver_linux"
+            return "./chromedriver/chromedriver_linux"
         elif opsys == "Windows":
             logging.info("OS Windows")
-            return "../chromedriver/chromedriver_windows.exe"
+            return "./chromedriver/chromedriver_windows.exe"
         elif opsys == "Darwin":
             logging.info("OS Mac")
-            return "../chromedriver/chromedriver_mac"
+            return "./chromedriver/chromedriver_mac"
         else:
             logging.info("Operating system not supported")
         
@@ -320,7 +320,13 @@ class ehlMain:
         #Muudame arvelduse menüü nähtavaks
         element = self.get_element(By.XPATH, '//*[@id="nav01"]/a/strong', 'Tab "Registrid"', clickable=True)
         element.click()
-        self.get_element(By.LINK_TEXT, "Patsiendid", 'Menüüvalik "Patsiendid"')
+        try:
+            self.get_element(By.LINK_TEXT, "Patsiendid", 'Menüüvalik "Patsiendid"')
+        except TimeoutException:
+            element = self.get_element(By.XPATH, '/html/body/div[1]/form/div[2]/div[2]/ul/li/a/strong', 'Tab "Registrid"', clickable=True)
+            element.click
+            self.get_element(By.LINK_TEXT, "Patsiendid", 'Menüüvalik "Patsiendid"')
+            print("Used a work-around to open Registrid -> Patsiendid")
 
         #Valime menüüst "haiguslugude otsimine"
         element = self.get_element(By.LINK_TEXT, "Patsiendid", 'Menüüvalik "Patsiendid"', clickable=True)
