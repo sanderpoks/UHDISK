@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
-from ehl_assistant import RecordManager, REDCAP_KEY_FILENAME, initiate_redcap, redcap_retrieve_remote, login_window
-from ehlredcap import RedcapConnection
-from ehlNavigeerimine import ehlMain, SidumataIsikukoodError
+from ehlassistant.ehl_assistant import RecordManager, REDCAP_KEY_FILENAME, redcap_retrieve_remote, login_window
+from ehlassistant.ehlredcap import RedcapConnection
+from ehlassistant.ehlNavigeerimine import ehlMain, SidumataIsikukoodError
+from ehlassistant.ehlreorder import order_sequence
 from time import sleep
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -13,7 +14,6 @@ from selenium.common.exceptions import TimeoutException, StaleElementReferenceEx
 from bs4 import BeautifulSoup
 import logging
 from datetime import date
-from ehlreorder import order_sequence
 import pickle
 
 APP_TITLE = "eHL Scraper"
@@ -181,15 +181,16 @@ class Scraper:
     Scraper koondab endas kõik funktsioonid, mis scrapevad eHList tunnuste kohta infot.
     Funktsioonid saavad scrapetud andmed otse uuritava dataklassi atribuutidesse salvestada.
     """
-    def __init__(self):
+    def __init__(self, ehl: ehlMain):
+        self.ehl = ehl
         self.driver = ehl.driver
 
     def scrape_kiirabi_kaart(self, ph_data: PhData) -> PhData:
         kiirabiAndmed = ph_data
-        ehl.navigeeri("Päevik")
-        element = ehl.get_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']", "Kõik päevad")
+        self.ehl.navigeeri("Päevik")
+        element = self.ehl.get_element(By.XPATH, "//a[@arn-evntpar='ALL_DAYS']", "Kõik päevad")
         element.click()
-        element = ehl.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki")
+        element = self.ehl.get_element(By.XPATH, "//a[@arn-evntid='showAll']", "Näita kõiki")
         element.click()
         #Siin võiks mingi parem lahendus olla
         sleep(1)
@@ -286,15 +287,15 @@ class Scraper:
     
     def scrape_triaaz(self, emo_data: EmoData) -> EmoData:
         data = emo_data
-        ehl.navigeeri("triaaz")
+        self.ehl.navigeeri("triaaz")
 
         # Triaažikategooria
-        if not ehl.element_exists(By.XPATH,'//*[@id="application-main-content"]/div[2]/div[2]/span[2]', "Triaažikategooria"):
+        if not self.ehl.element_exists(By.XPATH,'//*[@id="application-main-content"]/div[2]/div[2]/span[2]', "Triaažikategooria"):
             data.triage = triaaz.PUUDUB
             data.triage_nurse = data.triage_subtype = data.resp_qual = data.resp_quan = data.spo2 = data.sys = data.dia = data.hr = data.temp = None
             print("Patsiendil pole triaaži tehtud")
             return data
-        triaazi_varv = ehl.get_element(By.XPATH,'//*[@id="application-main-content"]/div[2]/div[2]/span[2]', "Triaažikategooria").text
+        triaazi_varv = self.ehl.get_element(By.XPATH,'//*[@id="application-main-content"]/div[2]/div[2]/span[2]', "Triaažikategooria").text
         if "punane" in triaazi_varv:
             data.triage = triaaz.PUNANE
         elif "oranž" in triaazi_varv:
@@ -308,8 +309,8 @@ class Scraper:
         logging.info(f"Triaaž on {data.triage}")
 
         #Triaaži alatüüp
-        element1 = ehl.get_element(By.XPATH, '//*[@id="fe-label-m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.regularTriageViewWidget.form.complaints"]', "Triaaži alatüüp")
-        element2 = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[3]/div/table/tbody/tr/td/span', "Triaaži alatüüp 2")
+        element1 = self.ehl.get_element(By.XPATH, '//*[@id="fe-label-m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.regularTriageViewWidget.form.complaints"]', "Triaaži alatüüp")
+        element2 = self.ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[3]/div/table/tbody/tr/td/span', "Triaaži alatüüp 2")
         data.triage_subtype = element1.text + " " + element2.text
         if data.triage_subtype == "Trauma: Trauma, mis nõuavad traumameeskonna kokkukutsumist":
             data.red_trauma = True
@@ -317,35 +318,35 @@ class Scraper:
             data.red_trauma = False
         
         #Triaažiõde
-        data.triage_nurse = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[1]/div[2]/table/tbody/tr[2]/td/span', "Triaažiõde").text
+        data.triage_nurse = self.ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[1]/div[2]/table/tbody/tr[2]/td/span', "Triaažiõde").text
 
         # Kvalitatiivne hingamissagedus
         data.resp_qual = None #Automaatselt ei täida seda
 
         # Kvantitatiivne hingamissagedus
-        if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[2]/td/span/span[2]', "Kvantitatiivne hingamissagedus"):
+        if not self.ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[2]/td/span/span[2]', "Kvantitatiivne hingamissagedus"):
             data.resp_quan = None
         else:
-            data.resp_quan = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[2]/td/span/span[2]', "Kvantitatiivne hingamissagedus").text
+            data.resp_quan = self.ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[2]/td/span/span[2]', "Kvantitatiivne hingamissagedus").text
         
         # SpO2
-        if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[3]/td/span/span[2]', "SpO2"):
+        if not self.ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[3]/td/span/span[2]', "SpO2"):
             data.spo2 = None
         else:
-            data.spo2 = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[3]/td/span/span[2]', "SpO2").text
+            data.spo2 = self.ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[3]/td/span/span[2]', "SpO2").text
 
         #Pulsisagedus
-        if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[5]/td/span/span[2]', "Pulsisagedus"):
+        if not self.ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[5]/td/span/span[2]', "Pulsisagedus"):
             data.hr = None
         else:
-            data.hr = ehl.get_element(By.XPATH,'//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[5]/td/span/span[2]', "Hingamissagedus").text
+            data.hr = self.ehl.get_element(By.XPATH,'//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[1]/table/tbody/tr[5]/td/span/span[2]', "Hingamissagedus").text
         # Vererõhk
-        if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td/span/span[2]', "Vererõhk dex"):
-            if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[2]/td/span/span[2]', "Vererõhk sin"):
+        if not self.ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td/span/span[2]', "Vererõhk dex"):
+            if not self.ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[2]/td/span/span[2]', "Vererõhk sin"):
                 data.sys = None
                 data.dia = None
             else: #Vasakul käel vererõhk
-                bp = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[2]/td/span/span[2]', "Vererõhk").text
+                bp = self.ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[2]/td/span/span[2]', "Vererõhk").text
                 sys,dia = bp.split(" / ")
                 if sys:
                     data.sys = sys
@@ -356,7 +357,7 @@ class Scraper:
                 else:
                     data.dia = None
         else: # Paremal käel vererõhk
-            bp = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td/span/span[2]', "Vererõhk").text
+            bp = self.ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td/span/span[2]', "Vererõhk").text
             sys,dia = bp.split(" / ")
             if sys:
                 data.sys = sys
@@ -372,10 +373,10 @@ class Scraper:
                 data.dia = None
 
         # Temp
-        if not ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[4]/td/span/span[2]', "Temp"):
+        if not self.ehl.element_exists(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[4]/td/span/span[2]', "Temp"):
             data.temp = None
         else:
-            data.temp = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[4]/td/span/span[2]', "temp").text
+            data.temp = self.ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[4]/td/span/span[2]', "temp").text
 
 
         return data
@@ -407,14 +408,14 @@ class Scraper:
         kaasatud_tyybid = {"amb", "stats", "paev"}
         diagnosis_set = set()
 
-        ehl.navigeeri("digilugu_diagnoosid")
-        element = ehl.get_element(By.ID, "angularIframe", "Iframe")
+        self.ehl.navigeeri("digilugu_diagnoosid")
+        element = self.ehl.get_element(By.ID, "angularIframe", "Iframe")
         self.driver.switch_to.frame(element)
 
         try:
-            element = ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[2]/div/div/table/thead/tr[1]/th/a", "Kõik kirjed", clickable=True)
+            element = self.ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[2]/div/div/table/thead/tr[1]/th/a", "Kõik kirjed", clickable=True)
         except TimeoutException:
-            element = ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[1]/div/h2/span", "Diagnooside arv")
+            element = self.ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[1]/div/h2/span", "Diagnooside arv")
             if element.text == 'Diagnoosid&nbsp;(0)':
                 print("Tühi digilugu")
                 data.kok_astma = False
@@ -423,7 +424,7 @@ class Scraper:
                 return data
 
         element.click()
-        element = ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[2]/div/div/table/tbody", "Diagnooside tabel")
+        element = self.ehl.get_element(By.XPATH, "/html/body/ui-view/div[2]/div[1]/div/div/form/div/div/hc-panel/div/div[2]/div/div/table/tbody", "Diagnooside tabel")
         html_text = element.get_attribute('innerHTML')
         soup = BeautifulSoup(html_text, "html.parser")
         for row in soup.findAll("tr"):
@@ -483,11 +484,11 @@ class Scraper:
         kok_astma_rhk = {"J44", "J44.0", "J44.1", "J44.8", "J44.9", "J45", "J45.0", "J45.1", "J45.8", "J45.9", "J46"}
         uhdisk_diagnoses = pneumonia_rhk.union(pneumotooraks_rhk, pleuraefusioon_rhk, perikard_rhk, mi_rhk, kate_rhk, kopsuturse_rhk, kok_astma_rhk)
         diagnoses = set()
-        if not ehl.element_exists(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f0.detailedEpicrisisModificationWidget._FINAL_DIAGNOSIS.list_listUpdate"]', "Diagnooside tabel"):
-            ehl.navigeeri("Epikriis")
+        if not self.ehl.element_exists(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f0.detailedEpicrisisModificationWidget._FINAL_DIAGNOSIS.list_listUpdate"]', "Diagnooside tabel"):
+            self.ehl.navigeeri("Epikriis")
 
         try:
-            tabel = ehl.get_element(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f0.detailedEpicrisisModificationWidget._FINAL_DIAGNOSIS.list_listUpdate"]', "Diagnooside tabel").get_attribute('innerHTML')
+            tabel = self.ehl.get_element(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f0.detailedEpicrisisModificationWidget._FINAL_DIAGNOSIS.list_listUpdate"]', "Diagnooside tabel").get_attribute('innerHTML')
         except TimeoutException:
             print("Epikriisi diagnoose ei ole")
             data.uhdisk = False
@@ -533,9 +534,9 @@ class Scraper:
                 "AIEI - 1. intensiivravi",
                 "AITI - 2. intensiivravi",
                 "AIKI - 3. intensiivravi"}
-        #ehl.navigeeri("Epikriis") #Eeldame, et oleme juba sel hetkel epikriisis
+        #self.ehl.navigeeri("Epikriis") #Eeldame, et oleme juba sel hetkel epikriisis
         try:
-            element = ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td', "Väljakirjutamise staatus")
+            element = self.ehl.get_element(By.XPATH, '//*[@id="application-main-content"]/div[2]/div[2]/div[2]/div[2]/table/tbody/tr[1]/td', "Väljakirjutamise staatus")
         except TimeoutException:
             print("Kuna epikriisi pole, ei saa ka haiglaravi kestuse infot")
             return None
@@ -545,13 +546,13 @@ class Scraper:
         else:
             data.hospitalised_death = False
         # Lähme haigusjuhu koondandmete lehele
-        element = ehl.get_element(By.XPATH, '/html/body/div[1]/form/div[2]/div[2]/div/div/div/p[2]/a[3]', "HJ koondandmed", clickable=True)
+        element = self.ehl.get_element(By.XPATH, '/html/body/div[1]/form/div[2]/div[2]/div/div/div/p[2]/a[3]', "HJ koondandmed", clickable=True)
         element.click()
         hosp_paevad = {}
-        if not ehl.element_exists(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.referrerInfoWidget.list_listUpdate"]', "Osakondade tabel"):
+        if not self.ehl.element_exists(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.referrerInfoWidget.list_listUpdate"]', "Osakondade tabel"):
             logging.info("Patsienti ei hospitaliseeritud")
             return None #Patsient ei hospitaliseeritud
-        tabel = ehl.get_element(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.referrerInfoWidget.list_listUpdate"]', "Osakondade tabel").get_attribute('innerHTML')
+        tabel = self.ehl.get_element(By.XPATH, '//*[@id="m.f0.rootWidget.topC.f0.menuContainer.f1.menu.f1.referrerInfoWidget.list_listUpdate"]', "Osakondade tabel").get_attribute('innerHTML')
         soup = BeautifulSoup(tabel, "html.parser")
         for row in soup.findAll("tr"):
             if len(row.get_text(strip=True)) != 0:

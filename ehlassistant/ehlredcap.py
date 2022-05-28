@@ -62,7 +62,7 @@ class RedcapConnection:
         result = result[0]
         return result
 
-    def download_multiple(self, redcap_id_list: list, fields: Optional[list] = None) -> list:
+    def download_multiple(self, redcap_id_list: list = None, fields: Optional[list] = None) -> list:
         """ Laeb RedCapi serverist alla mitme uuritava infoväljad. """
         result =  self.project.export_records(records=redcap_id_list, fields=fields, export_data_access_groups=True)
         return result

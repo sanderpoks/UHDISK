@@ -1,15 +1,13 @@
 # -*- coding: UTF-8 -*-
-from redcap import Project, RedcapError
-from ehlredcap import RedcapConnection
+from ehlassistant.ehlredcap import RedcapConnection
 import tkinter as tk
-import ehlNavigeerimine
+import ehlassistant.ehlNavigeerimine as ehlNavigeerimine
 import os
 import sys
 import logging
 
-REDCAP_KEY_FILENAME = "../redcap_api_key"
-VERSION_FILENAME = "../version"
-APP_TITLE = "ehL Helper"
+REDCAP_KEY_FILENAME = "./redcap_api_key"
+VERSION_FILENAME = "./version"
 
 class TkErrorCatcher:
 
@@ -136,7 +134,7 @@ class MainWindow:
         ehl.navigeeri("haiguslugu",self.active_record.isikukood, self.active_record.hj_number)
 
     def navigate_to(self, record_id):
-        self.record_manager = RecordManager(None) # Loome uue navigeerimisindeksi, mis ei piira navigeerimist ainult meie DAGidele
+        self.record_manager = RecordManager(untethered=True) # Loome uue navigeerimisindeksi, mis ei piira navigeerimist ainult meie DAGidele
         self.active_record = self.record_manager.goto_record(record_id)
         ehl.navigeeri("haiguslugu", self.active_record.isikukood, self.active_record.hj_number)
         self.refresh_labels()
@@ -181,9 +179,9 @@ class LoginWindow:
         self.master.destroy()
 
 class Record:
-    def __init__(self, project, record_id):
+    def __init__(self, record_id):
         self.record_id = record_id
-        record = redcap_retrieve_remote(project, record_id)[0]
+        record = redcap_retrieve_remote(record_id)
         logging.info(record)
         self.isikukood = record["id_code"]
         self.hj_number = record["ref_num"]
@@ -192,15 +190,15 @@ class Record:
         print(f"Record ID:\t{self.record_id}\nIsikukood:\t{self.isikukood}\nHJ number:\t{self.hj_number}\n")
 
 
-def redcap_retrieve_remote(project, record_id):
+def redcap_retrieve_remote(record_id):
     fields_of_interest = ["id_code", "ref_num"]
-    record = project.export_records(fields=fields_of_interest, records = [record_id])
+    record = rc.download(redcap_id=record_id,fields=fields_of_interest)
     return record  # Tagastab dictionary
 
-def redcap_download_available(project):
+def redcap_download_available():
     ''' See funktsioon tõmbab alla ainult anonümiseeritud andmed'''
     fields_of_interest = ["record_id", "taustainfo_complete",'kiirabi_complete', "emo_complete", 'diagnoosid_complete']
-    records = project.export_records(fields=fields_of_interest)
+    records = rc.download_multiple(fields=fields_of_interest)
     results = []
     for element in records:
         if element["taustainfo_complete"] in ["", "0"] or element["kiirabi_complete"] in ["", "0"] or  element["emo_complete"] in ["", "0"] or element["diagnoosid_complete"] in ["", "0"]:
@@ -209,11 +207,11 @@ def redcap_download_available(project):
 
 class RecordManager():
     ''' Haldab info järjepidevat allalaadimist RedCapist"'''
-    def __init__(self, project):
-        if project == None: # Kui navigeerime kõiki Redcapi uuritavaid sõltumata staatusest ja DAGist
+    def __init__(self, untethered=False):
+        if untethered: # Kui navigeerime kõiki Redcapi uuritavaid sõltumata staatusest ja DAGist
             self.record_id_list = range(1,21299) #Kokku 21299 uuritavat
         else:   # Kui navigeerime ainult meie DAGi uurimata uuritavaid
-            self.record_id_list = redcap_download_available(project)
+            self.record_id_list = redcap_download_available()
         self.records = []
         self.index = 0
 
@@ -248,16 +246,10 @@ class RecordManager():
             return record
         except IndexError:
             logging.info("Record not found locally, retrieveing")
-            record = Record(project, current_record_id)
+            record = Record(current_record_id)
             self.records.append(record)
             return(record)
         
-def initiate_redcap():
-    project = redcap_connect()  # Kui API key on juba faili salvestatud ja töötab, siis seostab RedCapi projektiga. 
-    while project is None:
-        redcap_create_api_key()  # Kui aga API keyga on mingi probleem, siis laseb kasutajal selle sisestada
-        project = redcap_connect()  # Ja seejärel seostab RedCapi projektiga
-    return project
 
 def setup_logger() -> None:
     logging.basicConfig(filename="ehl_log.txt", filemode='w', level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
@@ -265,19 +257,20 @@ def setup_logger() -> None:
     selenium_logger.disabled = True
 
 if __name__ == "__main__":
+    # Viime aktiivse töökausta faili asukohta, et lisafailid oleks leitavad
+    os.chdir(os.path.join(os.path.dirname(sys.argv[0]), ".."))
+    
+
     # Main program flow
     VERSION = get_version()
     APP_TITLE = f"ehl_helper - {VERSION}"
 
     setup_logger()
 
-    # Viime aktiivse töökausta faili asukohta, et lisafailid oleks leitavad
-    os.chdir(os.path.dirname(sys.argv[0]))
 
-    #project = initiate_redcap()
-    rc = RedcapConnection(url="https://redcap.ut.ee/api/", api_key_path="../redcap_api_key")
+    rc = RedcapConnection(url="https://redcap.ut.ee/api/", api_key_path=REDCAP_KEY_FILENAME)
 
-    record_manager = RecordManager(project)
+    record_manager = RecordManager()
     ehl = ehlNavigeerimine.ehlMain()
     ehl.ava()
     login_window(APP_TITLE) # Loob akna, mille kaudu märku anda, kui eHLi on sisse logitud.

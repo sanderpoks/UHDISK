@@ -32,84 +32,10 @@ class ehlMain:
         self.record_id = ""
         self.PATH = self.get_chromedriver_path() #"./chromedriver"
         self.driver = None
-        self.kiirabikaart_tekst=""
-        self.emo_andmed=""
-        self.diagnoosid_tekst=""
-        self.kiirabikaart_olemas=False
-        self.saabus_kiirabiga=False
-
-        self.kiirabi = [""]*23
-        for i in range(1,8):
-            self.kiirabi[i]="0"
-        self.kiirabikaart_puudu=""
-
-        self.kiirabi_anamnees=""
-        self.emo = [""]*22
-        #Muudame 0 - 6 elemendid "0"deks
-        for i in range(7):
-            self.emo[i]="0"
-        self.emo_kaebused=""
-        self.emo_triaaz_varv="6"
-
-        self.diagnoosid = [""]*52
-        for i in range(4,12):
-            self.diagnoosid[i]="0"
-        for i in range(15,36):
-            self.diagnoosid[i] = "0"
-
-        self.juhtiv_diagnoos = []
-        self.hospitaliseerimine = []
-        self.uhdisk_olemas=""
-
+        self.ava()
+        self.logi_sisse()
         self.elements_to_highlight = self.load_highlights()
 
-        pt_andmed_header = ['record_id']
-        kiirabi_header = ['ph', 'ph_complaints___1', 'ph_complaints___2', 'ph_complaints___3', 'ph_complaints___4',
-                          'ph_complaints___5', 'ph_complaints___6', 'ph_complaints___7', 'ph_resp_qual_missing___1',
-                          'ph_resp_qual', 'ph_resp_quan_missing___1', 'ph_resp_quan', 'ph_spo2_missing___1', 'ph_spo2',
-                          'ph_sys_missing___1', 'ph_sys', 'ph_dia_missing___1', 'ph_dia', 'ph_hr_missing___1', 'ph_hr',
-                          'ph_temp_missing___1', 'ph_temp', 'kiirabi_complete']
-        emo_header = ['emo_triage', 'emo_complaints___1', 'emo_complaints___2', 'emo_complaints___3',
-                      'emo_complaints___4',
-                      'emo_complaints___5', 'emo_complaints___6', 'emo_complaints___7', 'emo_resp_qual_missing___1',
-                      'emo_resp_qual', 'emo_resp_quan_missing___1', 'emo_resp_quan', 'emo_spo2_missing___1', 'emo_spo2',
-                      'emo_sys_missing___1', 'emo_sys', 'emo_dia_missing___1', 'emo_dia', 'emo_hr_missing___1',
-                      'emo_hr',
-                      'emo_temp_missing___1', 'emo_temp', 'emo_complete']
-        diagnoosid_header = ['earlier_diagnosis___1', 'earlier_diagnosis___2', 'earlier_diagnosis___3', 'uhdisk_exist',
-                             'uhdisk_diag___1', 'uhdisk_diag___2', 'uhdisk_diag___3', 'uhdisk_diag___4',
-                             'uhdisk_diag___5',
-                             'uhdisk_diag___6', 'uhdisk_diag___7', 'uhdisk_diag___8', 'diag_pleural_qual',
-                             'diag_pleural_quan_exist___1', 'diag_pleural_quan', 'non_uhdisk_diag___1',
-                             'non_uhdisk_diag___2',
-                             'non_uhdisk_diag___3', 'non_uhdisk_diag___4', 'non_uhdisk_diag___5', 'non_uhdisk_diag___6',
-                             'non_uhdisk_diag___21', 'non_uhdisk_diag___7', 'non_uhdisk_diag___17',
-                             'non_uhdisk_diag___8',
-                             'non_uhdisk_diag___9', 'non_uhdisk_diag___10', 'non_uhdisk_diag___11',
-                             'non_uhdisk_diag___12',
-                             'non_uhdisk_diag___13', 'non_uhdisk_diag___14', 'non_uhdisk_diag___15',
-                             'non_uhdisk_diag___16',
-                             'non_uhdisk_diag___18', 'non_uhdisk_diag___19', 'non_uhdisk_diag___20',
-                             'uhdisk_diag_lateral_pna',
-                             'uhdisk_diag_lateral_kate', 'uhdisk_diag_lateral_eff', 'uhdisk_diag_lateral_ptx',
-                             'diag_covid',
-                             'diag_tamponade', 'hospitalised', 'discharge_date', 'hospitalised_duration', 'icu',
-                             'icu_start',
-                             'icu_end', 'icu_duration', 'hospitalised_death', 'hospitalised_secondary',
-                             'diagnoosid_complete']
-
-        self.column_names = pt_andmed_header + kiirabi_header + emo_header + diagnoosid_header + ["taustainfo_complete"]
-        """
-        today=datetime.date.today()
-        now = datetime.datetime.now()
-        current_time = now.strftime("%H%M%S")
-        self.faili_nimi='[Kogutud andmed]_UH_uuring_'+str(today.year)+str(today.month)+str(today.day)+"_"+str(current_time)+'.csv'
-
-        file=open(self.faili_nimi,"w", newline="", encoding='UTF8')
-        writer = csv.writer(file)
-        writer.writerow(self.column_names)
-        file.close()
-        """
 
     def get_chromedriver_path(self):
         opsys = platform.system()
