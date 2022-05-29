@@ -2,6 +2,7 @@ from ehlassistant.ehlredcap import RedcapConnection
 from ehlassistant.ehl_scraper import Scraper, PreviousDiagnosisData, INITIAL_VALUE
 from ehlassistant.ehlNavigeerimine import ehlMain
 from datetime import date
+from selenium.common.exceptions import TimeoutException
 
 def main() -> None:
     global ehl
@@ -17,7 +18,12 @@ def main() -> None:
     for record in (r for r in record_list if int(r["record_id"]) in problemrecords):
         data = PreviousDiagnosisData()
         hj_number = record["ref_num"]
-        ehl.navigeeri("haiguslugu", record["id_code"], hj_number)
+        while True:
+            try:
+                ehl.navigeeri("haiguslugu", record["id_code"], hj_number)
+                break
+            except TimeoutException:
+                continue
         hj_date = date(int(hj_number[:4]), int(hj_number[4:6]), int(hj_number[6:8]))
         data = scraper.scrape_varasemad_diagnoosid(data, hj_date)
         print(f"RC ID: {record['record_id']}")
@@ -32,6 +38,8 @@ def main() -> None:
             upload_queue["auto_earlier_diagnosis___1"] = "1"
             if record["auto_status"] == "4":
                 upload_queue["earlier_diagnosis___1"] = "1"
+        if not data.kok_astma and not data.sydamepuudulikkus:
+            upload_queue["auto_earlier_diagnosis___3"] = "1"
         rc.upload(data=upload_queue, redcap_id=record["record_id"], overwrite=True)
 
 
