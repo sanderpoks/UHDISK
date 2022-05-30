@@ -582,13 +582,14 @@ class Scraper:
 class Uuritav:
     rc : RedcapConnection
     rc_id : int
+    ehl : ehlMain
     record : Record = field(init=False)
     data : UuritavData = field(default_factory=UuritavData)
-    scraper : Scraper = field(default_factory=Scraper)
     
     def __post_init__(self) -> None:
         self.record = Record(self.rc, self.rc_id)
         self.index_date = get_hj_date(self.record)
+        self.scraper = Scraper(self.ehl)
 
         print(self.rc_id)
         logging.info(f"### Alustan scrapemist - {self.rc_id} ###")
@@ -607,12 +608,9 @@ class Uuritav:
         return (str(self.record) + str(self.data))
 
     def ehl_navigate(self) -> None:
-        ehl.navigeeri("haiguslugu", self.record.isikukood, self.record.hj_number)
+        self.ehl.navigeeri("haiguslugu", self.record.isikukood, self.record.hj_number)
 
     
-def log_in() -> None:
-    ehl.navigeeri("logi_sisse")
-
 def setup_logger() -> None:
     logging.basicConfig(filename="ehl_log.txt", filemode='w', level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
     selenium_logger = logging.getLogger('selenium.webdriver.remote.remote_connection')
@@ -621,14 +619,9 @@ def setup_logger() -> None:
 
 def get_redcap_id_list(rc: RedcapConnection) -> Iterable[int]:
     result =  rc.get_id({"foreigner":["2"], "auto_status": ["", "1", "2"]})#, "taustainfo_complete":["1"]})
-    #result = [1963]
-#    result.pop(0)
-#    result.pop(0)
-#    result.pop(0)
-#    result.pop(0)
-#    result.pop(0)
-#    result.pop(0)
     result = order_sequence(result)
+    result.remove(12267) # Error case
+    print(f"Kokku järel automatiseerida {len(result)} ankeeti")
     return result
     #return range(731,1001)
     #return [271]
@@ -944,7 +937,7 @@ def upload_data(rc: RedcapConnection, uuritav: Uuritav) -> None:
     result["record_id"] = rc_id
     logging.info("Starting upload")
     rc.upload({"record_id" : rc_id, "auto_status" : 2}, overwrite=True)
-    rc.upload(result, confirm=False)
+    rc.upload(result, overwrite=True)
     rc.upload({"record_id" : rc_id, "auto_status" : 3, "automaatkontroll_complete" : "1"}, overwrite=True)
     logging.info("Upload complete")
     
@@ -954,17 +947,14 @@ def upload_data(rc: RedcapConnection, uuritav: Uuritav) -> None:
 def main():
     try:
         setup_logger()
-        global ehl
         ehl = ehlMain()
-        ehl.ava()
         #login_window("eHL Scraper")
         rc = RedcapConnection(url="https://redcap.ut.ee/api/", api_key_path="redcap_api_key")
-        log_in()
         redcap_id_list = get_redcap_id_list(rc)
         while True:
             try:
                 for rc_id in redcap_id_list:
-                    uuritav = Uuritav(rc, rc_id)
+                    uuritav = Uuritav(rc=rc, rc_id=rc_id, ehl=ehl)
                     upload_data(rc, uuritav)
                     continue
             except (TimeoutException, StaleElementReferenceException):

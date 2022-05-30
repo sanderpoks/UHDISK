@@ -67,6 +67,12 @@ class RedcapConnection:
         result =  self.project.export_records(records=redcap_id_list, fields=fields, export_data_access_groups=True)
         return result
 
+    def upload_multiple(self, data_list: list):
+        """ No checking here, just trying to upload, use at your own risk """
+        result = self.project.import_records(data_list)["count"]
+        print(f"Updated {result} records")
+
+
     def upload(self, data: dict, redcap_id: int = None, confirm: bool = True, overwrite: bool = False):
 #        print("UPLOAD IMMINENT")
 #        print(data)
@@ -84,10 +90,10 @@ class RedcapConnection:
                 if data[key] == "":
                     data[key] = "0"
             # If there already is data
-            if str(original_data[key]) == str(data[key]):
-                # No need to write in new data, as nothing is different
-                logging.info(f"D - {key}:\t{original_data[key]} : {data[key]}")
-                continue
+#            if str(original_data[key]) == str(data[key]):
+#                # No need to write in new data, as nothing is different
+#                logging.info(f"D - {key}:\t{original_data[key]} : {data[key]}")
+#                continue
             # If there is no data to overwrite, then just write the new data in
             if original_data[key] == "":
                 final_data[key] = data[key]

@@ -202,7 +202,8 @@ def redcap_download_available():
     results = []
     for element in records:
         if element["taustainfo_complete"] in ["", "0"] or element["kiirabi_complete"] in ["", "0"] or  element["emo_complete"] in ["", "0"] or element["diagnoosid_complete"] in ["", "0"]:
-            results.append(element["record_id"])
+            if element["redcap_data_access_group"] == "poks":
+                results.append(element["record_id"])
     return results
 
 class RecordManager():
@@ -272,8 +273,7 @@ if __name__ == "__main__":
 
     record_manager = RecordManager()
     ehl = ehlNavigeerimine.ehlMain()
-    ehl.ava()
-    login_window(APP_TITLE) # Loob akna, mille kaudu märku anda, kui eHLi on sisse logitud.
+    #login_window(APP_TITLE) # Loob akna, mille kaudu märku anda, kui eHLi on sisse logitud.
     main_window(record_manager) # Avab navigeerimispaneeli
 
     

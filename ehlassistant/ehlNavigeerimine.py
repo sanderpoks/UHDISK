@@ -386,79 +386,80 @@ class ehlMain:
         return
 
     def tootle_kiirabikaart(self):
-        toorandmed=self.kiirabikaart_tekst.splitlines()
-        if not toorandmed:
-            self.kiirabi[0]="2"
-            #Väljasta andmed
-            #Välju programmist
-            return
-        #print(toorandmed)
-        for i in toorandmed:
-            #Kvalitatiivne hingamissagedus
-            if "Hingamissageduse tase" in i and self.kiirabi[9]=="" and len(i.split(" ")) == 3:
-                self.kiirabi[9]=i.split(" ")[2]
-                if self.kiirabi[9] == "hüperventilatsioon":
-                    self.kiirabi[9]="4"
-                if self.kiirabi[9] == "hüpoventilatsioon":
-                    self.kiirabi[9]="2"
-                if self.kiirabi[9] == "normoventilatsioon":
-                    self.kiirabi[9]="3"
-                self.kiirabi[8] = "0"
-            elif self.kiirabi[8] == "":
-                self.kiirabi[8]="1"
-
-            #Kvantitatiivne hingamissagedus
-            if "Hingamissagedus" in i and "korda/min" in i and self.kiirabi[11]=="" and len(i.split(" ")) == 3:
-                self.kiirabi[11]=i.split(" ")[1]
-                self.kiirabi[10] = "0"
-            elif self.kiirabi[10] == "":
-                self.kiirabi[10]="1"
-
-            #SpO2
-            if "SpO2" in i and self.kiirabi[13]=="" and len(i.split(" ")) == 3:
-                self.kiirabi[13]=i.split(" ")[1]
-                self.kiirabi[12] = "0"
-            elif self.kiirabi[12] == "":
-                self.kiirabi[12]="1"
-
-            #Süstoolne vererõhk
-            if "süstoolne" in i and self.kiirabi[15]=="" and len(i.split(" ")) == 4:
-                self.kiirabi[15]=i.split(" ")[2]
-                self.kiirabi[14] = "0"
-            elif self.kiirabi[14] == "":
-                self.kiirabi[14]="1"
-
-            #Diastoolne vererõhk
-            if "diastoolne" in i and self.kiirabi[17]=="" and len(i.split(" ")) == 4:
-                self.kiirabi[17]=i.split(" ")[2]
-                self.kiirabi[16] = "0"
-            elif self.kiirabi[16] == "":
-                self.kiirabi[16]="1"
-
-            #Südame löögisagedus
-            if "Pulsisagedus" in i and self.kiirabi[19]=="" and len(i.split(" ")) == 3:
-                self.kiirabi[19]=i.split(" ")[1]
-                self.kiirabi[18] = "0"
-            elif self.kiirabi[18] == "":
-                self.kiirabi[18]="1"
-
-            #Temperatuur
-            if "Temperatuur" in i and self.kiirabi[21]=="" and len(i.split(" ")) == 4:
-                self.kiirabi[21]=i.split(" ")[2]
-                self.kiirabi[20] = "0"
-            elif self.kiirabi[20] == "":
-                self.kiirabi[20]="1"
-
-        anamneesi_algus=0
-        #Lisame ka anamneesi (ÄRA SEDA REDCAPi SAADA)
-        for i in range(len(toorandmed)):
-            if toorandmed[i].find("Anamnees")!=-1:
-                anamneesi_algus=i
-                break
-        #Ei toimi, mingid tühikud rikuvad ära
-        #anamneesi_algus = toorandmed.index("Anamnees")
-##        anamneesi_lopp = toorandmed.index("Patsiendi objektiivne staatus")
-##        self.kiirabi_anamnees = " ".join(toorandmed[anamneesi_algus:anamneesi_lopp])
+        pass
+#        toorandmed=self.kiirabikaart_tekst.splitlines()
+#        if not toorandmed:
+#            self.kiirabi[0]="2"
+#            #Väljasta andmed
+#            #Välju programmist
+#            return
+#        #print(toorandmed)
+#        for i in toorandmed:
+#            #Kvalitatiivne hingamissagedus
+#            if "Hingamissageduse tase" in i and self.kiirabi[9]=="" and len(i.split(" ")) == 3:
+#                self.kiirabi[9]=i.split(" ")[2]
+#                if self.kiirabi[9] == "hüperventilatsioon":
+#                    self.kiirabi[9]="4"
+#                if self.kiirabi[9] == "hüpoventilatsioon":
+#                    self.kiirabi[9]="2"
+#                if self.kiirabi[9] == "normoventilatsioon":
+#                    self.kiirabi[9]="3"
+#                self.kiirabi[8] = "0"
+#            elif self.kiirabi[8] == "":
+#                self.kiirabi[8]="1"
+#
+#            #Kvantitatiivne hingamissagedus
+#            if "Hingamissagedus" in i and "korda/min" in i and self.kiirabi[11]=="" and len(i.split(" ")) == 3:
+#                self.kiirabi[11]=i.split(" ")[1]
+#                self.kiirabi[10] = "0"
+#            elif self.kiirabi[10] == "":
+#                self.kiirabi[10]="1"
+#
+#            #SpO2
+#            if "SpO2" in i and self.kiirabi[13]=="" and len(i.split(" ")) == 3:
+#                self.kiirabi[13]=i.split(" ")[1]
+#                self.kiirabi[12] = "0"
+#            elif self.kiirabi[12] == "":
+#                self.kiirabi[12]="1"
+#
+#            #Süstoolne vererõhk
+#            if "süstoolne" in i and self.kiirabi[15]=="" and len(i.split(" ")) == 4:
+#                self.kiirabi[15]=i.split(" ")[2]
+#                self.kiirabi[14] = "0"
+#            elif self.kiirabi[14] == "":
+#                self.kiirabi[14]="1"
+#
+#            #Diastoolne vererõhk
+#            if "diastoolne" in i and self.kiirabi[17]=="" and len(i.split(" ")) == 4:
+#                self.kiirabi[17]=i.split(" ")[2]
+#                self.kiirabi[16] = "0"
+#            elif self.kiirabi[16] == "":
+#                self.kiirabi[16]="1"
+#
+#            #Südame löögisagedus
+#            if "Pulsisagedus" in i and self.kiirabi[19]=="" and len(i.split(" ")) == 3:
+#                self.kiirabi[19]=i.split(" ")[1]
+#                self.kiirabi[18] = "0"
+#            elif self.kiirabi[18] == "":
+#                self.kiirabi[18]="1"
+#
+#            #Temperatuur
+#            if "Temperatuur" in i and self.kiirabi[21]=="" and len(i.split(" ")) == 4:
+#                self.kiirabi[21]=i.split(" ")[2]
+#                self.kiirabi[20] = "0"
+#            elif self.kiirabi[20] == "":
+#                self.kiirabi[20]="1"
+#
+#        anamneesi_algus=0
+#        #Lisame ka anamneesi (ÄRA SEDA REDCAPi SAADA)
+#        for i in range(len(toorandmed)):
+#            if toorandmed[i].find("Anamnees")!=-1:
+#                anamneesi_algus=i
+#                break
+#        #Ei toimi, mingid tühikud rikuvad ära
+#        #anamneesi_algus = toorandmed.index("Anamnees")
+###        anamneesi_lopp = toorandmed.index("Patsiendi objektiivne staatus")
+###        self.kiirabi_anamnees = " ".join(toorandmed[anamneesi_algus:anamneesi_lopp])
 
         return
 
@@ -525,62 +526,62 @@ class ehlMain:
         self.tootle_emo()
 
     def tootle_emo(self):
-        toorandmed=self.emo_andmed.splitlines()
-        if not toorandmed:
-            return
-        for i in toorandmed:
-            # Kvalitatiivne hingamissagedus (kui näed triaaži kaardil, siis täida ära)
-            """
-            if "" in i and self.emo[8] == "" and len(i.split(" ")) == 3:
-                self.emo[8] = i.split(" ")[2]
-                self.emo[7] = "0"
-            else:
-                self.emo[7] = "1"
-            """
-            i = " ".join(i.split())
-            # Hingamissagedus
-            if "Hingamissagedus" in i and self.emo[10] == "" and len(i.split(" ")) == 3:
-                self.emo[10] = i.split(" ")[1]
-                self.emo[9] = "0"
-            elif self.emo[9] == "":
-                self.emo[9] = "1"
-
-            # SpO2
-            if "SpO2" in i and self.emo[12] == "" and len(i.split(" ")) == 3:
-                self.emo[12] = i.split(" ")[1]
-                self.emo[11] = "0"
-            elif self.emo[11] == "":
-                self.emo[11] = "1"
-
-            # Vererõhk:
-            if (("Parem käsi" in i and "- / -" not in i) or ("Vasak käsi" in i and "- / -" not in i)) and \
-                            self.emo[14] == "" and self.emo[16] == "" and len(i.split(" ")) == 6:
-                # Süstoolne:
-                self.emo[14] = i.split(" ")[2]
-                # Diastoolne
-                self.emo[16] = i.split(" ")[4]
-
-                self.emo[13] = "0"
-                self.emo[15] = "0"
-            elif self.emo[15] == "":
-                self.emo[13] = "1"
-                self.emo[15] = "1"
-
-            # Pulss:
-            if "Pulss" in i and self.emo[18] == "" and len(i.split(" ")) == 3:
-                self.emo[18] = i.split(" ")[1]
-                self.emo[17] = "0"
-            elif self.emo[17] == "":
-                self.emo[17] = "1"
-
-            # Kehatemperatuur:
-            if "Kehatemperatuur" in i and self.emo[20] == "" and len(i.split(" ")) == 3:
-                self.emo[20] = i.split(" ")[1]
-                self.emo[19] = "0"
-            elif self.emo[19]=="":
-                self.emo[19] = "1"
-
-        #Kui tahame, et indeksid tabeliga kattuks, tuleks ühe võrra vasakule liigutada
+#        toorandmed=self.emo_andmed.splitlines()
+#        if not toorandmed:
+#            return
+#        for i in toorandmed:
+#            # Kvalitatiivne hingamissagedus (kui näed triaaži kaardil, siis täida ära)
+#            """
+#            if "" in i and self.emo[8] == "" and len(i.split(" ")) == 3:
+#                self.emo[8] = i.split(" ")[2]
+#                self.emo[7] = "0"
+#            else:
+#                self.emo[7] = "1"
+#            """
+#            i = " ".join(i.split())
+#            # Hingamissagedus
+#            if "Hingamissagedus" in i and self.emo[10] == "" and len(i.split(" ")) == 3:
+#                self.emo[10] = i.split(" ")[1]
+#                self.emo[9] = "0"
+#            elif self.emo[9] == "":
+#                self.emo[9] = "1"
+#
+#            # SpO2
+#            if "SpO2" in i and self.emo[12] == "" and len(i.split(" ")) == 3:
+#                self.emo[12] = i.split(" ")[1]
+#                self.emo[11] = "0"
+#            elif self.emo[11] == "":
+#                self.emo[11] = "1"
+#
+#            # Vererõhk:
+#            if (("Parem käsi" in i and "- / -" not in i) or ("Vasak käsi" in i and "- / -" not in i)) and \
+#                            self.emo[14] == "" and self.emo[16] == "" and len(i.split(" ")) == 6:
+#                # Süstoolne:
+#                self.emo[14] = i.split(" ")[2]
+#                # Diastoolne
+#                self.emo[16] = i.split(" ")[4]
+#
+#                self.emo[13] = "0"
+#                self.emo[15] = "0"
+#            elif self.emo[15] == "":
+#                self.emo[13] = "1"
+#                self.emo[15] = "1"
+#
+#            # Pulss:
+#            if "Pulss" in i and self.emo[18] == "" and len(i.split(" ")) == 3:
+#                self.emo[18] = i.split(" ")[1]
+#                self.emo[17] = "0"
+#            elif self.emo[17] == "":
+#                self.emo[17] = "1"
+#
+#            # Kehatemperatuur:
+#            if "Kehatemperatuur" in i and self.emo[20] == "" and len(i.split(" ")) == 3:
+#                self.emo[20] = i.split(" ")[1]
+#                self.emo[19] = "0"
+#            elif self.emo[19]=="":
+#                self.emo[19] = "1"
+#
+#        #Kui tahame, et indeksid tabeliga kattuks, tuleks ühe võrra vasakule liigutada
 
         return
 
