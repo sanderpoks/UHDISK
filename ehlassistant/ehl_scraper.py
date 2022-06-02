@@ -619,10 +619,13 @@ def setup_logger() -> None:
 
 def get_redcap_id_list(rc: RedcapConnection) -> Iterable[int]:
     result =  rc.get_id({"foreigner":["2"], "auto_status": ["", "1", "2"]})#, "taustainfo_complete":["1"]})
-    result = order_sequence(result)
-    result.remove(12267) # Error case
-    print(f"Kokku järel automatiseerida {len(result)} ankeeti")
-    return result
+    result_int = [int(rc_id) for rc_id in result]
+    print(result_int)
+    #result = order_sequence(result)
+    result_int.remove(12267) # Error case
+    result_int.remove(13690) # Error case
+    print(f"Kokku järel automatiseerida {len(result_int)} ankeeti")
+    return result_int
     #return range(731,1001)
     #return [271]
     #return [2555]
