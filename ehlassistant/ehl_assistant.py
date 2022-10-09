@@ -9,6 +9,7 @@ import logging
 REDCAP_KEY_FILENAME = "./redcap_api_key"
 VERSION_FILENAME = "./version"
 
+
 class TkErrorCatcher:
 
     '''
@@ -16,7 +17,7 @@ class TkErrorCatcher:
     Enables the program to catch tkinter errors normally
     '''
 
-    def __init__(self, func, subst, widget):
+    def __init__(self, func, subst, widget) -> None:
         self.func = func
         self.subst = subst
         self.widget = widget
@@ -30,6 +31,7 @@ class TkErrorCatcher:
             raise SystemExit(msg)
         except Exception as err:
             raise err
+
 
 tk.CallWrapper = TkErrorCatcher
 
@@ -49,6 +51,7 @@ def redcap_create_api_key():
     window = ApiRequestWindow(root)
     root.mainloop()
 
+
 class ApiRequestWindow:
 
     def __init__(self, master):
@@ -56,18 +59,19 @@ class ApiRequestWindow:
         frame = tk.Frame(master)
         frame.pack()
 
-        tk.Label(text = "Sisesta oma RedCap API võti:").pack(pady = 10, padx = 20)
+        tk.Label(text="Sisesta oma RedCap API võti:").pack(pady=10, padx=20)
         self.api_request = tk.Entry()
         self.api_request.pack()
-        tk.Button(text = "Salvesta võti",
-                  command = lambda:self.save_api_key(self.api_request.get())
-                  ).pack(pady = 10)
+        tk.Button(text="Salvesta võti",
+                  command=lambda: self.save_api_key(self.api_request.get())
+                  ).pack(pady=10)
 
     def save_api_key(self, api_key):
         file = open(REDCAP_KEY_FILENAME, "w")
         file.write(api_key)
         file.close()
         self.master.destroy()
+
 
 class MainWindow:
 
@@ -76,9 +80,8 @@ class MainWindow:
         self.record_manager = record_manager
         self.active_record = self.record_manager.current()
 
-
         BUTTONWIDTH = 5
-        
+
         topframe = tk.Frame(master)
         botframe = tk.Frame(master)
 
@@ -89,31 +92,27 @@ class MainWindow:
         self.hj_number = tk.StringVar()
         self.record_id = tk.StringVar()
         self.refresh_labels()
-        
+
         tk.Label(topframe, textvariable=self.isikukood).pack(expand=True)
         tk.Label(topframe, textvariable=self.hj_number).pack(expand=True)
         self.record_label = tk.Label(topframe, textvariable=self.record_id)
         self.record_label.pack(expand=True)
         self.record_label.bind("<Double-Button-1>", self.edit_case)
 
-        kiirabinupp = tk.Button(botframe, text = "Kiirabi", command = lambda:ehl.navigeeri("kiirabi"), width = BUTTONWIDTH)
-        paevikunupp = tk.Button(botframe, text = "Päevik", command = lambda:ehl.navigeeri("paevik"), width = BUTTONWIDTH)
-        triaazinupp = tk.Button(botframe, text = "Triaaž", command = lambda:ehl.navigeeri("triaaz"), width = BUTTONWIDTH)
-        epikriisinupp = tk.Button(botframe, text = "Epikriis", command = lambda:ehl.navigeeri("Epikriis"), width = BUTTONWIDTH)
-        ehl_diagn_nupp = tk.Button(botframe, text = "D (eHL)", command = lambda:ehl.navigeeri("diagnoosid"), width = BUTTONWIDTH)
-        digilugu_diagn_nupp = tk.Button(botframe, text = "D (DL)", command = lambda:ehl.navigeeri("digilugu_diagnoosid"), width = BUTTONWIDTH)
+        kiirabinupp = tk.Button(botframe, text="Kiirabi", command=lambda:ehl.navigeeri("kiirabi"), width=BUTTONWIDTH)
+        paevikunupp = tk.Button(botframe, text="Päevik", command=lambda:ehl.navigeeri("paevik"), width=BUTTONWIDTH)
+        triaazinupp = tk.Button(botframe, text="Triaaž", command=lambda:ehl.navigeeri("triaaz"), width=BUTTONWIDTH)
+        epikriisinupp = tk.Button(botframe, text="Epikriis", command=lambda:ehl.navigeeri("Epikriis"), width=BUTTONWIDTH)
 
-        jargminenupp = tk.Button(botframe, text = "Järgmine", command = self.next, width = BUTTONWIDTH)
-        eelminenupp = tk.Button(botframe, text = "Eelmine", command = self.previous, width = BUTTONWIDTH)
+        jargminenupp = tk.Button(botframe, text="Järgmine", command = self.next, width = BUTTONWIDTH)
+        eelminenupp = tk.Button(botframe, text="Eelmine", command = self.previous, width = BUTTONWIDTH)
 
         kiirabinupp.grid(row=0,column=0)
         paevikunupp.grid(row=0, column=1)
         triaazinupp.grid(row=0, column=2)
-        epikriisinupp.grid(row=0,column=3)
-        jargminenupp.grid(row=1,column=3)
+        epikriisinupp.grid(row=1,column=1)
+        jargminenupp.grid(row=1,column=2)
         eelminenupp.grid(row=1,column=0)
-        ehl_diagn_nupp.grid(row=1,column=1)
-        digilugu_diagn_nupp.grid(row=1, column=2)
 
         ehl.navigeeri("haiguslugu", self.active_record.isikukood, self.active_record.hj_number)
 
@@ -154,7 +153,7 @@ class MainWindow:
             entry_result = int(entry_result)
             self.navigate_to(entry_result)
         entry.destroy()
-        
+
 
 def main_window(record_manager):
     root = tk.Tk()
@@ -172,7 +171,7 @@ class LoginWindow:
 
     def __init__(self, master):
         self.master = master
-        
+
         tk.Button(text="Olen eHLi sisse loginud", command = self.quit).pack(padx = 20, pady = 20)
 
     def quit(self):
@@ -238,7 +237,7 @@ class RecordManager():
         self.current_record_id = record_id
         self.index = record_id - 1
         return self.current()
-        
+
 
     def retrieve_record(self, current_record_id):
         try:
@@ -250,7 +249,7 @@ class RecordManager():
             record = Record(current_record_id)
             self.records.append(record)
             return(record)
-        
+
 
 def setup_logger() -> None:
     logging.basicConfig(filename="ehl_log.txt", filemode='w', level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
@@ -260,7 +259,7 @@ def setup_logger() -> None:
 if __name__ == "__main__":
     # Viime aktiivse töökausta faili asukohta, et lisafailid oleks leitavad
     os.chdir(os.path.join(os.path.dirname(sys.argv[0]), ".."))
-    
+
 
     # Main program flow
     VERSION = get_version()
@@ -275,5 +274,3 @@ if __name__ == "__main__":
     ehl = ehlNavigeerimine.ehlMain()
     #login_window(APP_TITLE) # Loob akna, mille kaudu märku anda, kui eHLi on sisse logitud.
     main_window(record_manager) # Avab navigeerimispaneeli
-
-    
