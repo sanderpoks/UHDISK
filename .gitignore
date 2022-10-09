@@ -16,3 +16,9 @@ dist_windows/
 
 # Logifailid
 ehl_log.txt
+
+# VSCode
+.vscode/
+
+# Mypy
+.mypy_cache
